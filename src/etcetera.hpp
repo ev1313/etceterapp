@@ -1,6 +1,7 @@
 #pragma once
 
 #include <any>
+#include <cassert>
 #include <functional>
 #include <istream>
 #include <map>
@@ -9,13 +10,26 @@
 namespace etcetera {
 
 class Base {
+protected:
+  Base *parent = nullptr;
+  friend class Struct;
+
 public:
   virtual std::any parse(std::iostream &stream) = 0;
   virtual void build(std::iostream &stream) = 0;
+
+  virtual bool is_struct() { return false; }
+  virtual bool is_array() { return false; }
+
+  // for structs and the like
+  virtual std::any get(std::string) {
+    throw std::runtime_error("Not implemented");
+  }
+  // returns all the data
   virtual std::any get() = 0;
 };
 
-typedef std::tuple<std::string, std::unique_ptr<Base>> Field;
+typedef std::pair<std::string, Base *> Field;
 
 class Int32ul : public Base {
 public:
@@ -27,11 +41,11 @@ public:
   void build(std::iostream &stream) override {
     stream.write(reinterpret_cast<char *>(&value), sizeof(value));
   }
-  std::any get() { return value; }
+  std::any get() override { return value; }
 };
 
 class Struct : public Base {
-  std::map<std::string, std::unique_ptr<Base>> fields;
+  std::map<std::string, Base *> fields;
 
 public:
   template <typename... Args> Struct(Args &&...args) {
@@ -55,10 +69,19 @@ public:
     }
   }
 
-  std::any get() {
-    std::map<std::string, std::any> ret;
-    for (auto &[key, field] : fields) {
-      ret.emplace(key, field->get());
+  bool is_struct() override { return true; }
+
+  std::any get() override { throw std::runtime_error("Not implemented"); }
+
+  std::any get(std::string key) override { return fields[key]->get(); }
+
+  template <typename... Ts> std::any get(std::string key, Ts... args) {
+    if (key == "_") {
+      assert(this->parent->is_struct());
+      return this->parent->get(args...);
+    } else {
+      assert(this->parent->is_struct());
+      return fields[key]->get(args...);
     }
   }
 };
