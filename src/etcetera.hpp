@@ -7,9 +7,12 @@
 #include <map>
 #include <memory>
 
+#include <spdlog/spdlog.h>
+
 namespace etcetera {
 
 class Struct;
+class Array;
 
 class Base {
 protected:
@@ -17,6 +20,7 @@ protected:
 
   Base *parent = nullptr;
   friend class Struct;
+  friend class Array;
 
   void set_parent(Base *parent) { this->parent = parent; }
 
@@ -26,15 +30,92 @@ public:
 
   virtual bool is_struct() { return false; }
   virtual bool is_array() { return false; }
+  virtual bool is_simple_type() { return false; }
+
+  virtual Base *get_field(std::string key) {
+    throw std::runtime_error("Not implemented");
+  };
+  template <typename T> T *get_field(std::string key) {
+    return dynamic_cast<T *>(get_field(key));
+  }
+  virtual Base *get_field(size_t key) {
+    throw std::runtime_error("Not implemented");
+  };
+  template <typename T> T *get_field(size_t key) {
+    return dynamic_cast<T *>(get_field(key));
+  }
+  template <typename T, typename... Ts>
+  T *get_field(K key, size_t sub_key, Ts &&...args) {
+    Base *field = get_field(key);
+    if (field == nullptr) {
+      throw std::runtime_error("nullptr field in Struct::get");
+    }
+    if constexpr (sizeof...(args) == 0) {
+      return dynamic_cast<T *>(field->get_field(sub_key));
+    } else {
+      return field->get_field<T>(sub_key, args...);
+    }
+  }
+
+  template <typename T, typename... Ts>
+  T *get_field(std::string key, std::string sub_key, Ts &&...args) {
+    Base *field = get_field(key);
+    if (field == nullptr) {
+      throw std::runtime_error("nullptr field in Struct::get");
+    }
+    if constexpr (sizeof...(args) == 0) {
+      return dynamic_cast<T *>(field->get_field<T>(sub_key));
+    } else {
+      return field->get_field<T>(sub_key, args...);
+    }
+  }
 
   // returns all the data
   virtual std::any get() = 0;
+  template <typename T> T get() { return std::any_cast<T>(get()); }
+  virtual std::any get(std::string key) {
+    throw std::runtime_error("Not implemented");
+  };
+  template <typename T> T get(std::string key) {
+    return std::any_cast<T>(get(key));
+  }
+  virtual std::any get(size_t key) {
+    throw std::runtime_error("Not implemented");
+  };
+  template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
+  template <typename T, typename... Ts>
+  T get(std::string key, size_t sub_key, Ts &&...args) {
+    Base *field = get_field(key);
+    if (field == nullptr) {
+      throw std::runtime_error("nullptr field in Struct::get");
+    }
+    if constexpr (sizeof...(args) == 0) {
+      return std::any_cast<T>(field->get(sub_key));
+    } else {
+      return field->get<T>(sub_key, args...);
+    }
+  }
+
+  template <typename T, typename... Ts>
+  T get(std::string key, std::string sub_key, Ts &&...args) {
+    Base *field = get_field(key);
+    if (field == nullptr) {
+      throw std::runtime_error("nullptr field in Struct::get");
+    }
+    if constexpr (sizeof...(args) == 0) {
+      return std::any_cast<T>(field->get(sub_key));
+    } else {
+      return field->get<T>(sub_key, args...);
+    }
+  }
 };
 
 typedef std::pair<std::string, Base *> Field;
 
 template <typename T> class IntegralType : public Base {
 public:
+  using Base::get;
+  using Base::get_field;
   T value = 0;
   std::any parse(std::iostream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(value));
@@ -44,6 +125,7 @@ public:
     stream.write(reinterpret_cast<char *>(&value), sizeof(value));
   }
   std::any get() override { return value; }
+  bool is_simple_type() override { return true; }
 };
 using Int8ul = IntegralType<int8_t>;
 using Int16ul = IntegralType<int16_t>;
@@ -58,6 +140,8 @@ class Struct : public Base {
   std::map<std::string, Base *> fields;
 
 public:
+  using Base::get;
+  using Base::get_field;
   template <typename... Args> Struct(Args &&...args) {
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
                     std::get<1>(std::forward<Args>(args))),
@@ -88,46 +172,48 @@ public:
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(std::string key) { return fields[key]->get(); }
 
-  template <typename T, typename... Ts> T get(std::string key, Ts &&...args) {
+  Base *get_field(std::string key) override {
     if (key == "_") {
-      if constexpr (sizeof...(args) > 0) {
-        assert(this->parent != nullptr);
-        assert(this->parent->is_struct());
-        return ((Struct *)this->parent)->get<T>(args...);
-      } else {
-        throw std::runtime_error("Not implemented");
-      }
-    } else {
-      if constexpr (sizeof...(args) == 0) {
-        return std::any_cast<T>(fields[key]->get());
-      } else {
-        assert(fields[key]->is_struct());
-        return ((Struct *)fields[key])->get<T>(args...);
-      }
+      return this->parent;
     }
+    return fields[key];
   }
+};
 
-  Base *get_field(std::string key) { return fields[key]; }
+class Array : public Base {
+protected:
+  size_t size;
+  std::function<size_t(Base *)> size_fn;
+  std::function<Base *()> type_constructor;
+  std::vector<Base *> data;
 
-  template <typename T, typename... Ts>
-  T *get_field(std::string key, Ts &&...args) {
-    if (key == "_") {
-      if constexpr (sizeof...(args) > 0) {
-        assert(this->parent != nullptr);
-        assert(this->parent->is_struct());
-        return ((Struct *)this->parent)->get_field<T>(args...);
-      } else {
-        throw std::runtime_error("Not implemented");
-      }
-    } else {
-      if constexpr (sizeof...(args) == 0) {
-        return (T *)fields[key];
-      } else {
-        assert(fields[key]->is_struct());
-        return ((Struct *)fields[key])->get_field<T>(args...);
-      }
+public:
+  using Base::get;
+  using Base::get_field;
+  Array(size_t size, std::function<Base *()> type_constructor)
+      : size(size), type_constructor(type_constructor) {}
+  Array(std::function<size_t(Base *)> size_fn,
+        std::function<Base *()> type_constructor)
+      : size_fn(size_fn), type_constructor(type_constructor) {}
+  std::any parse(std::iostream &stream) override {
+    if (size_fn) {
+      size = size_fn(this);
     }
+    data.clear();
+    for (size_t i = 0; i < size; i++) {
+      auto obj = type_constructor();
+      obj->set_parent(this);
+      data.push_back(obj);
+      data.back()->parse(stream);
+    }
+    return data;
   }
+  void build(std::iostream &stream) override {}
+
+  std::any get() override { throw std::runtime_error("Not implemented"); }
+  std::any get(size_t key) override { return data[key]->get(); }
+
+  Base *get_field(size_t key) override { return data[key]; }
 };
 
 } // namespace etcetera

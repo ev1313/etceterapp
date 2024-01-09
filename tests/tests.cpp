@@ -12,8 +12,9 @@ TEST_CASE("Int parsing test") {
   ss.write(reinterpret_cast<const char *>(&i), sizeof(i));
   REQUIRE(std::any_cast<int32_t>(field.parse(ss)) == i);
   REQUIRE(field.value == i);
+  int32_t x = field.get<int32_t>();
+  REQUIRE(x == i);
 }
-
 TEST_CASE("Int building test") {
   etc::Int32ul field;
   int32_t i = 0x12345678;
@@ -114,4 +115,64 @@ TEST_CASE("Struct building") {
   REQUIRE(ss.get() == data.get());
 }
 
-TEST_CASE("Array") { etc::Array<etc::Int32ul>(8); }
+TEST_CASE("Array") {
+  auto arr = etc::Array(4, []() { return new etc::Int32ul(); });
+  std::stringstream data;
+  std::stringstream orig;
+  int32_t a = 0x12345678;
+  int32_t b = 0x87654321;
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  data.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  data.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  arr.parse(data);
+  REQUIRE(arr.get<int32_t>(0) == a);
+  REQUIRE(arr.get<int32_t>(1) == b);
+  REQUIRE(arr.get<int32_t>(2) == a);
+  REQUIRE(arr.get<int32_t>(3) == b);
+
+  data.seekg(0);
+  auto arr2 = etc::Array(2, []() {
+    return new etc::Struct(etc::Field("a", new etc::Int32ul()),
+                           etc::Field("b", new etc::Int32ul()));
+  });
+  arr2.parse(data);
+  for (size_t i = 0; i < 2; i++) {
+    REQUIRE(arr2.get<int32_t>(i, "a") == a);
+    REQUIRE(arr2.get<int32_t>(i, "b") == b);
+  }
+}
+
+TEST_CASE("Nested Arrays") {
+  auto arr = etc::Array(2, []() {
+    return new etc::Array(2, []() { return new etc::Int32ul(); });
+  });
+  std::stringstream data;
+  std::stringstream orig;
+  int32_t a = 0x12345678;
+  int32_t b = 0x87654321;
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  data.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  data.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  arr.parse(data);
+  REQUIRE(arr.get<int32_t>(0, 0) == a);
+  REQUIRE(arr.get<int32_t>(0, 1) == b);
+  REQUIRE(arr.get<int32_t>(1, 0) == a);
+  REQUIRE(arr.get<int32_t>(1, 1) == b);
+}
+/*
+TEST_CASE("Switch") {
+  auto switch = etc::Switch([](Base *c) { return "t1"; },
+                            SwitchField("t1", new etc::Int32ul()),
+                            SwitchField("t2", new etc::Int64ul()));
+}
+*/
