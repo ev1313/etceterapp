@@ -118,17 +118,12 @@ TEST_CASE("Struct building") {
 TEST_CASE("Array") {
   auto arr = etc::Array(4, []() { return new etc::Int32ul(); });
   std::stringstream data;
-  std::stringstream orig;
   int32_t a = 0x12345678;
   int32_t b = 0x87654321;
   data.write(reinterpret_cast<const char *>(&a), sizeof(a));
   data.write(reinterpret_cast<const char *>(&b), sizeof(b));
   data.write(reinterpret_cast<const char *>(&a), sizeof(a));
   data.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
-  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
-  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
   arr.parse(data);
   REQUIRE(arr.get<int32_t>(0) == a);
   REQUIRE(arr.get<int32_t>(1) == b);
@@ -145,15 +140,18 @@ TEST_CASE("Array") {
     REQUIRE(arr2.get<int32_t>(i, "a") == a);
     REQUIRE(arr2.get<int32_t>(i, "b") == b);
   }
+  std::stringstream ss;
+  arr2.build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str() == data.str());
 }
 
 TEST_CASE("Nested Arrays") {
   /*auto arr = etc::Array(2, []() {
     return new etc::Array(2, []() { return new etc::Int32ul(); });
   });*/
-  auto arr =
-      etc::Array(2, ARR_ITEM(etc::Struct(etc::Field("a", new etc::Int32ul()),
-                                         etc::Field("b", new etc::Int32ul()))));
+  auto arr = etc::Array(2, ARR_ITEM(etc::Array(2, ARR_ITEM(etc::Int32ul()))));
   std::stringstream data;
   std::stringstream orig;
   int32_t a = 0x12345678;

@@ -36,5 +36,5 @@ add_library(etceterapp src/etcetera.cpp)
 target_link_libraries(etceterapp PUBLIC argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml)
 target_include_directories(etceterapp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_executable(tests tests/tests.cpp)
+add_executable(tests tests/tests.cpp tests/tests_xml.cpp)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain etceterapp)

@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 
+#include <pugixml.hpp>
 #include <spdlog/spdlog.h>
 
 namespace etcetera {
@@ -77,6 +78,14 @@ public:
     }
     return field->get<T>(args...);
   }
+
+  virtual void parse_xml(pugi::xml_node const &node, std::string name) {
+    throw std::runtime_error("Not implemented");
+  }
+
+  virtual pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) {
+    throw std::runtime_error("Not implemented");
+  }
 };
 
 typedef std::pair<std::string, Base *> Field;
@@ -95,6 +104,16 @@ public:
   }
   std::any get() override { return value; }
   bool is_simple_type() override { return true; }
+
+  void parse_xml(pugi::xml_node const &node, std::string name) override {
+    auto s = node.attribute(name.c_str());
+    value = s.as_int();
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    parent.append_attribute(name.c_str()) = value;
+    return parent;
+  }
 };
 using Int8ul = IntegralType<int8_t>;
 using Int16ul = IntegralType<int16_t>;
@@ -147,6 +166,21 @@ public:
     }
     return fields[key];
   }
+
+  void parse_xml(pugi::xml_node const &node, std::string name) override {
+    auto s = node.child(name.c_str());
+    for (auto &[key, field] : fields) {
+      field->parse_xml(s, key);
+    }
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    auto s = parent.append_child(name.c_str());
+    for (auto &[key, field] : fields) {
+      field->build_xml(s, key);
+    }
+    return s;
+  }
 };
 
 class Array : public Base {
@@ -177,7 +211,11 @@ public:
     }
     return data;
   }
-  void build(std::iostream &stream) override {}
+  void build(std::iostream &stream) override {
+    for (auto &obj : data) {
+      obj->build(stream);
+    }
+  }
 
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(size_t key) override { return data[key]->get(); }
