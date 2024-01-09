@@ -15,17 +15,19 @@ namespace etcetera {
 class Struct;
 class Array;
 
-class Base {
+class Base : public std::enable_shared_from_this<Base> {
 protected:
   std::type_info const &type_ = typeid(Base);
 
-  Base *parent = nullptr;
+  std::weak_ptr<Base> parent;
   friend class Struct;
   friend class Array;
 
-  void set_parent(Base *parent) { this->parent = parent; }
+  struct PrivateBase {};
+  void set_parent(std::weak_ptr<Base> parent) { this->parent = parent; }
 
 public:
+  Base(PrivateBase) {}
   virtual std::any parse(std::iostream &stream) = 0;
   virtual void build(std::iostream &stream) = 0;
 
@@ -33,28 +35,25 @@ public:
   virtual bool is_array() { return false; }
   virtual bool is_simple_type() { return false; }
 
-  virtual Base *get_field(std::string key) {
+  virtual std::weak_ptr<Base> get_field(std::string key) {
     throw std::runtime_error("Not implemented");
   };
-  template <typename T> T *get_field(std::string key) {
-    return dynamic_cast<T *>(get_field(key));
+  template <typename T> std::weak_ptr<T> get_field(std::string key) {
+    return static_pointer_cast<T>(get_field(key));
   }
-  virtual Base *get_field(size_t key) {
+  virtual std::weak_ptr<Base> get_field(size_t key) {
     throw std::runtime_error("Not implemented");
   };
-  template <typename T> T *get_field(size_t key) {
-    return dynamic_cast<T *>(get_field(key));
+  template <typename T> std::weak_ptr<T> get_field(size_t key) {
+    return static_pointer_cast<T>(get_field(key));
   }
   template <typename T, typename K, typename... Ts>
-  T *get_field(K key, Ts &&...args) {
-    Base *field = get_field(key);
-    if (field == nullptr) {
-      throw std::runtime_error("nullptr field in Struct::get");
-    }
+  std::weak_ptr<T> get_field(K key, Ts &&...args) {
+    std::weak_ptr<Base> field = get_field(key);
     if constexpr (sizeof...(Ts) == 0) {
-      return dynamic_cast<T *>(field);
+      return static_pointer_cast<T>(field.lock());
     } else {
-      return field->get_field<T>(args...);
+      return field.lock()->get_field<T>(args...);
     }
   }
 
@@ -72,11 +71,8 @@ public:
   };
   template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
   template <typename T, typename K, typename... Ts> T get(K key, Ts &&...args) {
-    Base *field = get_field(key);
-    if (field == nullptr) {
-      throw std::runtime_error("nullptr field in Struct::get");
-    }
-    return field->get<T>(args...);
+    std::weak_ptr<Base> field = get_field(key);
+    return field.lock()->get<T>(args...);
   }
 
   virtual void parse_xml(pugi::xml_node const &node, std::string name) {
@@ -88,13 +84,15 @@ public:
   }
 };
 
-typedef std::pair<std::string, Base *> Field;
-
-template <typename T> class IntegralType : public Base {
+template <typename TIntType> class IntegralType : public Base {
 public:
   using Base::get;
   using Base::get_field;
-  T value = 0;
+  TIntType value = 0;
+  IntegralType(PrivateBase) : Base(PrivateBase()) {}
+  static std::shared_ptr<IntegralType> create() {
+    return std::make_shared<IntegralType>(PrivateBase());
+  }
   std::any parse(std::iostream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(value));
     return value;
@@ -124,20 +122,29 @@ using UInt16ul = IntegralType<uint16_t>;
 using UInt32ul = IntegralType<uint32_t>;
 using UInt64ul = IntegralType<uint64_t>;
 
+typedef std::pair<std::string, std::shared_ptr<Base>> Field;
+
 class Struct : public Base {
-  std::map<std::string, Base *> fields;
+  std::map<std::string, std::shared_ptr<Base>> fields;
 
 public:
   using Base::get;
   using Base::get_field;
-  template <typename... Args> Struct(Args &&...args) {
+  template <typename... Args>
+  Struct(PrivateBase, Args &&...args) : Base(PrivateBase()) {
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
                     std::get<1>(std::forward<Args>(args))),
      ...);
+  }
+  template <typename... Args>
+  static std::shared_ptr<Struct> create(Args &&...args) {
+    auto ret = std::make_shared<Struct>(PrivateBase(), args...);
 
-    for (auto &[key, field] : fields) {
-      field->set_parent(this);
+    for (auto &[key, field] : ret->fields) {
+      field->set_parent(ret);
     }
+
+    return ret;
   }
 
   std::any parse(std::iostream &stream) override {
@@ -160,7 +167,7 @@ public:
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(std::string key) { return fields[key]->get(); }
 
-  Base *get_field(std::string key) override {
+  std::weak_ptr<Base> get_field(std::string key) override {
     if (key == "_") {
       return this->parent;
     }
@@ -186,26 +193,39 @@ public:
 class Array : public Base {
 protected:
   size_t size;
-  std::function<size_t(Base *)> size_fn;
-  std::function<Base *()> type_constructor;
-  std::vector<Base *> data;
+  std::function<size_t(std::weak_ptr<Base>)> size_fn;
+  std::function<std::shared_ptr<Base>()> type_constructor;
+  std::vector<std::shared_ptr<Base>> data;
 
 public:
   using Base::get;
   using Base::get_field;
-  Array(size_t size, std::function<Base *()> type_constructor)
-      : size(size), type_constructor(type_constructor) {}
-  Array(std::function<size_t(Base *)> size_fn,
-        std::function<Base *()> type_constructor)
-      : size_fn(size_fn), type_constructor(type_constructor) {}
+  Array(PrivateBase, size_t size,
+        std::function<std::shared_ptr<Base>()> m_type_constructor)
+      : size(size), type_constructor(m_type_constructor), Base(PrivateBase()) {}
+  static std::shared_ptr<Array>
+  create(size_t size,
+         std::function<std::shared_ptr<Base>()> m_type_constructor) {
+    return std::make_shared<Array>(PrivateBase(), size, m_type_constructor);
+  }
+
+  Array(PrivateBase, std::function<size_t(std::weak_ptr<Base>)> size_fn,
+        std::function<std::shared_ptr<Base>()> m_type_constructor)
+      : size_fn(size_fn), type_constructor(m_type_constructor),
+        Base(PrivateBase()) {}
+  static std::shared_ptr<Array>
+  create(std::function<size_t(std::weak_ptr<Base>)> size_fn,
+         std::function<std::shared_ptr<Base>()> m_type_constructor) {
+    return std::make_shared<Array>(PrivateBase(), size_fn, m_type_constructor);
+  }
   std::any parse(std::iostream &stream) override {
     if (size_fn) {
-      size = size_fn(this);
+      size = size_fn(weak_from_this());
     }
     data.clear();
     for (size_t i = 0; i < size; i++) {
       auto obj = type_constructor();
-      obj->set_parent(this);
+      obj->set_parent(weak_from_this());
       data.push_back(obj);
       data.back()->parse(stream);
     }
@@ -220,9 +240,8 @@ public:
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(size_t key) override { return data[key]->get(); }
 
-  Base *get_field(size_t key) override { return data[key]; }
+  std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 };
 
-#define ARR_ITEM(X) []() { return new X; }
-
+#define ARR_ITEM(X) []() { return X; }
 } // namespace etcetera
