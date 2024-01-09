@@ -170,7 +170,7 @@ TEST_CASE("Rebuild static") {
   auto s = etc::Struct::create(
       FIELD("a", Int32ul),
       etc::Field("b", etc::Rebuild::create(
-                          [](std::weak_ptr<etc::Base> c) {
+                          [](std::weak_ptr<etc::Base>) {
                             return std::make_any<int32_t>(456);
                           },
                           etc::Int32ul::create())));
@@ -240,6 +240,13 @@ TEST_CASE("Rebuild nested") {
   REQUIRE(ss.str() == orig.str());
 }
 
+/*
+TEST_CASE("LazyBound") {
+  auto s = etc::LazyBound::create([](std::function<std::shared_ptr<etc::Base>()>
+c){ return etc::Struct::create( FIELD("a", Int32ul), FIELD("b", Int32ul));
+  });
+}
+*/
 /*
 TEST_CASE("Switch") {
   auto switch = etc::Switch([](Base *c) { return "t1"; },

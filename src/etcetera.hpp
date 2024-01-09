@@ -35,13 +35,13 @@ public:
   virtual bool is_array() { return false; }
   virtual bool is_simple_type() { return false; }
 
-  virtual std::weak_ptr<Base> get_field(std::string key) {
+  virtual std::weak_ptr<Base> get_field(std::string) {
     throw std::runtime_error("Not implemented");
   };
   template <typename T> std::weak_ptr<T> get_field(std::string key) {
     return static_pointer_cast<T>(get_field(key));
   }
-  virtual std::weak_ptr<Base> get_field(size_t key) {
+  virtual std::weak_ptr<Base> get_field(size_t) {
     throw std::runtime_error("Not implemented");
   };
   template <typename T> std::weak_ptr<T> get_field(size_t key) {
@@ -60,15 +60,13 @@ public:
   // returns all the data
   virtual std::any get() = 0;
   template <typename T> T get() { return std::any_cast<T>(get()); }
-  virtual std::any get(std::string key) {
+  virtual std::any get(std::string) {
     throw std::runtime_error("Not implemented");
   };
   template <typename T> T get(std::string key) {
     return std::any_cast<T>(get(key));
   }
-  virtual std::any get(size_t key) {
-    throw std::runtime_error("Not implemented");
-  };
+  virtual std::any get(size_t) { throw std::runtime_error("Not implemented"); };
   template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
   template <typename T, typename K, typename... Ts> T get(K key, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
@@ -77,13 +75,13 @@ public:
 
   virtual std::any get_parsed() = 0;
   template <typename T> T get_parsed() { return std::any_cast<T>(get()); }
-  virtual std::any get_parsed(std::string key) {
+  virtual std::any get_parsed(std::string) {
     throw std::runtime_error("Not implemented");
   };
   template <typename T> T get_parsed(std::string key) {
     return std::any_cast<T>(get_parsed(key));
   }
-  virtual std::any get_parsed(size_t key) {
+  virtual std::any get_parsed(size_t) {
     throw std::runtime_error("Not implemented");
   };
   template <typename T> T get_parsed(size_t key) {
@@ -95,15 +93,13 @@ public:
     return field.lock()->get<T>(args...);
   }
 
-  virtual void set(std::any value) {
+  virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
+
+  virtual void parse_xml(pugi::xml_node const &, std::string) {
     throw std::runtime_error("Not implemented");
   }
 
-  virtual void parse_xml(pugi::xml_node const &node, std::string name) {
-    throw std::runtime_error("Not implemented");
-  }
-
-  virtual pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) {
+  virtual pugi::xml_node build_xml(pugi::xml_node &, std::string) {
     throw std::runtime_error("Not implemented");
   }
 };
@@ -234,7 +230,7 @@ public:
   using Base::get_field;
   Array(PrivateBase, size_t size,
         std::function<std::shared_ptr<Base>()> m_type_constructor)
-      : size(size), type_constructor(m_type_constructor), Base(PrivateBase()) {}
+      : Base(PrivateBase()), size(size), type_constructor(m_type_constructor) {}
   static std::shared_ptr<Array>
   create(size_t size,
          std::function<std::shared_ptr<Base>()> m_type_constructor) {
@@ -243,8 +239,8 @@ public:
 
   Array(PrivateBase, std::function<size_t(std::weak_ptr<Base>)> size_fn,
         std::function<std::shared_ptr<Base>()> m_type_constructor)
-      : size_fn(size_fn), type_constructor(m_type_constructor),
-        Base(PrivateBase()) {}
+      : Base(PrivateBase()), size_fn(size_fn),
+        type_constructor(m_type_constructor) {}
   static std::shared_ptr<Array>
   create(std::function<size_t(std::weak_ptr<Base>)> size_fn,
          std::function<std::shared_ptr<Base>()> m_type_constructor) {
@@ -294,7 +290,7 @@ public:
 
   Rebuild(PrivateBase, std::function<std::any(std::weak_ptr<Base>)> rebuild_fn,
           std::shared_ptr<Base> child)
-      : rebuild_fn(rebuild_fn), child(child), Base(PrivateBase()) {}
+      : Base(PrivateBase()), rebuild_fn(rebuild_fn), child(child) {}
 
   static std::shared_ptr<Rebuild>
   create(std::function<std::any(std::weak_ptr<Base>)> rebuild_fn,
@@ -315,4 +311,38 @@ public:
     child->build(stream);
   }
 };
+
+/*
+class LazyBound : public Base {
+protected:
+  std::function<std::shared_ptr<Base>(std::weak_ptr<Base> c,
+                                      std::weak_ptr<Base> s)>
+      lazy_fn;
+  std::shared_ptr<Base> child;
+
+public:
+  using Base::get;
+  using Base::get_field;
+
+  LazyBound(PrivateBase, std::function<std::shared_ptr<Base>(Base *c)> lazy_fn)
+      : lazy_fn(lazy_fn), Base(PrivateBase()) {}
+
+  static std::shared_ptr<LazyBound>
+  create(std::function<std::shared_ptr<Base>(Base *c)> lazy_fn) {
+    return std::make_shared<LazyBound>(PrivateBase(), lazy_fn);
+  }
+
+  std::any get() override { return child->get(); }
+  std::any get_parsed() override { return child->get(); }
+
+  std::any parse(std::iostream &stream) override {
+    child = lazy_fn(this->parent, weak_from_this());
+    child->set_parent(weak_from_this());
+    return child->parse(stream);
+  }
+
+  void build(std::iostream &stream) override { child->build(stream); }
+};
+*/
+
 } // namespace etcetera
