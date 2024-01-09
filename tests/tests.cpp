@@ -148,9 +148,12 @@ TEST_CASE("Array") {
 }
 
 TEST_CASE("Nested Arrays") {
-  auto arr = etc::Array(2, []() {
+  /*auto arr = etc::Array(2, []() {
     return new etc::Array(2, []() { return new etc::Int32ul(); });
-  });
+  });*/
+  auto arr =
+      etc::Array(2, ARR_ITEM(etc::Struct(etc::Field("a", new etc::Int32ul()),
+                                         etc::Field("b", new etc::Int32ul()))));
   std::stringstream data;
   std::stringstream orig;
   int32_t a = 0x12345678;

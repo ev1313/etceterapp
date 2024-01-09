@@ -44,29 +44,16 @@ public:
   template <typename T> T *get_field(size_t key) {
     return dynamic_cast<T *>(get_field(key));
   }
-  template <typename T, typename... Ts>
-  T *get_field(K key, size_t sub_key, Ts &&...args) {
+  template <typename T, typename K, typename... Ts>
+  T *get_field(K key, Ts &&...args) {
     Base *field = get_field(key);
     if (field == nullptr) {
       throw std::runtime_error("nullptr field in Struct::get");
     }
-    if constexpr (sizeof...(args) == 0) {
-      return dynamic_cast<T *>(field->get_field(sub_key));
+    if constexpr (sizeof...(Ts) == 0) {
+      return dynamic_cast<T *>(field);
     } else {
-      return field->get_field<T>(sub_key, args...);
-    }
-  }
-
-  template <typename T, typename... Ts>
-  T *get_field(std::string key, std::string sub_key, Ts &&...args) {
-    Base *field = get_field(key);
-    if (field == nullptr) {
-      throw std::runtime_error("nullptr field in Struct::get");
-    }
-    if constexpr (sizeof...(args) == 0) {
-      return dynamic_cast<T *>(field->get_field<T>(sub_key));
-    } else {
-      return field->get_field<T>(sub_key, args...);
+      return field->get_field<T>(args...);
     }
   }
 
@@ -83,30 +70,12 @@ public:
     throw std::runtime_error("Not implemented");
   };
   template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
-  template <typename T, typename... Ts>
-  T get(std::string key, size_t sub_key, Ts &&...args) {
+  template <typename T, typename K, typename... Ts> T get(K key, Ts &&...args) {
     Base *field = get_field(key);
     if (field == nullptr) {
       throw std::runtime_error("nullptr field in Struct::get");
     }
-    if constexpr (sizeof...(args) == 0) {
-      return std::any_cast<T>(field->get(sub_key));
-    } else {
-      return field->get<T>(sub_key, args...);
-    }
-  }
-
-  template <typename T, typename... Ts>
-  T get(std::string key, std::string sub_key, Ts &&...args) {
-    Base *field = get_field(key);
-    if (field == nullptr) {
-      throw std::runtime_error("nullptr field in Struct::get");
-    }
-    if constexpr (sizeof...(args) == 0) {
-      return std::any_cast<T>(field->get(sub_key));
-    } else {
-      return field->get<T>(sub_key, args...);
-    }
+    return field->get<T>(args...);
   }
 };
 
@@ -215,5 +184,7 @@ public:
 
   Base *get_field(size_t key) override { return data[key]; }
 };
+
+#define ARR_ITEM(X) []() { return new X; }
 
 } // namespace etcetera
