@@ -75,6 +75,30 @@ public:
     return field.lock()->get<T>(args...);
   }
 
+  virtual std::any get_parsed() = 0;
+  template <typename T> T get_parsed() { return std::any_cast<T>(get()); }
+  virtual std::any get_parsed(std::string key) {
+    throw std::runtime_error("Not implemented");
+  };
+  template <typename T> T get_parsed(std::string key) {
+    return std::any_cast<T>(get_parsed(key));
+  }
+  virtual std::any get_parsed(size_t key) {
+    throw std::runtime_error("Not implemented");
+  };
+  template <typename T> T get_parsed(size_t key) {
+    return std::any_cast<T>(get(key));
+  }
+  template <typename T, typename K, typename... Ts>
+  T get_parsed(K key, Ts &&...args) {
+    std::weak_ptr<Base> field = get_field(key);
+    return field.lock()->get<T>(args...);
+  }
+
+  virtual void set(std::any value) {
+    throw std::runtime_error("Not implemented");
+  }
+
   virtual void parse_xml(pugi::xml_node const &node, std::string name) {
     throw std::runtime_error("Not implemented");
   }
@@ -101,6 +125,10 @@ public:
     stream.write(reinterpret_cast<char *>(&value), sizeof(value));
   }
   std::any get() override { return value; }
+  std::any get_parsed() override { return value; }
+  void set(std::any value) override {
+    this->value = std::any_cast<TIntType>(value);
+  }
   bool is_simple_type() override { return true; }
 
   void parse_xml(pugi::xml_node const &node, std::string name) override {
@@ -166,6 +194,10 @@ public:
 
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(std::string key) { return fields[key]->get(); }
+  std::any get_parsed() override {
+    throw std::runtime_error("Not implemented");
+  }
+  std::any get_parsed(std::string key) { return fields[key]->get(); }
 
   std::weak_ptr<Base> get_field(std::string key) override {
     if (key == "_") {
@@ -239,9 +271,48 @@ public:
 
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(size_t key) override { return data[key]->get(); }
+  std::any get_parsed() override {
+    throw std::runtime_error("Not implemented");
+  }
+  std::any get_parsed(size_t key) override { return data[key]->get(); }
 
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 };
 
+#define FIELD(A, B) etcetera::Field(A, etcetera::B::create())
+#define ARRAY(...) etcetera::Array::create(__VA_ARGS__)
 #define ARR_ITEM(X) []() { return X; }
+
+class Rebuild : public Base {
+protected:
+  std::function<std::any(std::weak_ptr<Base>)> rebuild_fn;
+  std::shared_ptr<Base> child;
+
+public:
+  using Base::get;
+  using Base::get_field;
+
+  Rebuild(PrivateBase, std::function<std::any(std::weak_ptr<Base>)> rebuild_fn,
+          std::shared_ptr<Base> child)
+      : rebuild_fn(rebuild_fn), child(child), Base(PrivateBase()) {}
+
+  static std::shared_ptr<Rebuild>
+  create(std::function<std::any(std::weak_ptr<Base>)> rebuild_fn,
+         std::shared_ptr<Base> child) {
+    return std::make_shared<Rebuild>(PrivateBase(), rebuild_fn, child);
+  }
+
+  std::any get() override { return rebuild_fn(this->parent); }
+  std::any get_parsed() override { return child->get(); }
+
+  std::any parse(std::iostream &stream) override {
+    return child->parse(stream);
+  }
+
+  void build(std::iostream &stream) override {
+    auto data = this->get();
+    child->set(data);
+    child->build(stream);
+  }
+};
 } // namespace etcetera

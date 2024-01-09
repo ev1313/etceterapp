@@ -131,8 +131,7 @@ TEST_CASE("Array") {
 
   data.seekg(0);
   auto arr2 = etc::Array::create(2, []() {
-    return etc::Struct::create(etc::Field("a", etc::Int32ul::create()),
-                               etc::Field("b", etc::Int32ul::create()));
+    return etc::Struct::create(FIELD("a", Int32ul), FIELD("b", Int32ul));
   });
   arr2->parse(data);
   for (size_t i = 0; i < 2; i++) {
@@ -147,8 +146,7 @@ TEST_CASE("Array") {
 }
 
 TEST_CASE("Nested Arrays") {
-  auto arr = etc::Array::create(
-      2, ARR_ITEM(etc::Array::create(2, ARR_ITEM(etc::Int32ul::create()))));
+  auto arr = ARRAY(2, ARR_ITEM(ARRAY(2, ARR_ITEM(etc::Int32ul::create()))));
   std::stringstream data;
   std::stringstream orig;
   int32_t a = 0x12345678;
@@ -167,6 +165,81 @@ TEST_CASE("Nested Arrays") {
   REQUIRE(arr->get<int32_t>(1, 0) == a);
   REQUIRE(arr->get<int32_t>(1, 1) == b);
 }
+
+TEST_CASE("Rebuild static") {
+  auto s = etc::Struct::create(
+      FIELD("a", Int32ul),
+      etc::Field("b", etc::Rebuild::create(
+                          [](std::weak_ptr<etc::Base> c) {
+                            return std::make_any<int32_t>(456);
+                          },
+                          etc::Int32ul::create())));
+
+  int32_t a = 123;
+  int32_t b = 456;
+
+  s->get_field<etc::Int32ul>("a").lock()->value = a;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
+  std::stringstream ss;
+  s->build(ss);
+  ss.seekg(0);
+  REQUIRE(ss.str() == orig.str());
+}
+
+TEST_CASE("Rebuild dynamic") {
+  auto s = etc::Struct::create(
+      etc::Field("b", etc::Rebuild::create(
+                          [](std::weak_ptr<etc::Base> c) {
+                            return std::make_any<int32_t>(
+                                c.lock()->get<int32_t>("a") + 333);
+                          },
+                          etc::Int32ul::create())),
+      FIELD("a", Int32ul));
+  int32_t a = 123;
+  int32_t b = a + 333;
+
+  s->get_field<etc::Int32ul>("a").lock()->value = a;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
+  std::stringstream ss;
+  s->build(ss);
+  ss.seekg(0);
+  REQUIRE(ss.str() == orig.str());
+}
+
+TEST_CASE("Rebuild nested") {
+  auto s = etc::Struct::create(
+      etc::Field("a", etc::Rebuild::create(
+                          [](std::weak_ptr<etc::Base> c) {
+                            return std::make_any<int32_t>(
+                                c.lock()->get<int32_t>("c") + 111);
+                          },
+                          etc::Int32ul::create())),
+      FIELD("b", Int32ul),
+      etc::Field("c", etc::Rebuild::create(
+                          [](std::weak_ptr<etc::Base> c) {
+                            return std::make_any<int32_t>(
+                                c.lock()->get<int32_t>("b") + 111);
+                          },
+                          etc::Int32ul::create())));
+  int32_t b = 123;
+  int32_t c = b + 111;
+  int32_t a = c + 111;
+
+  s->get_field<etc::Int32ul>("b").lock()->value = b;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
+  orig.write(reinterpret_cast<const char *>(&c), sizeof(int32_t));
+  std::stringstream ss;
+  s->build(ss);
+  ss.seekg(0);
+  REQUIRE(ss.str() == orig.str());
+}
+
 /*
 TEST_CASE("Switch") {
   auto switch = etc::Switch([](Base *c) { return "t1"; },
