@@ -148,6 +148,7 @@ TEST_CASE("Array") {
 TEST_CASE("Nested Arrays") {
   auto arr = Array::create(
       2, []() { return Array::create(2, []() { return Int32ul::create(); }); });
+
   std::stringstream data;
   std::stringstream orig;
   int32_t a = 0x12345678;

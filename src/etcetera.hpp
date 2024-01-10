@@ -309,20 +309,19 @@ public:
 
 class Rebuild : public Base {
 protected:
-  std::function<std::any(std::weak_ptr<Base>)> rebuild_fn;
+  typedef std::function<std::any(std::weak_ptr<Base>)> FRebuildFn;
+  FRebuildFn rebuild_fn;
   std::shared_ptr<Base> child;
 
 public:
   using Base::get;
   using Base::get_field;
 
-  Rebuild(PrivateBase, std::function<std::any(std::weak_ptr<Base>)> rebuild_fn,
-          std::shared_ptr<Base> child)
+  Rebuild(PrivateBase, FRebuildFn rebuild_fn, std::shared_ptr<Base> child)
       : Base(PrivateBase()), rebuild_fn(rebuild_fn), child(child) {}
 
-  static std::shared_ptr<Rebuild>
-  create(std::function<std::any(std::weak_ptr<Base>)> rebuild_fn,
-         std::shared_ptr<Base> child) {
+  static std::shared_ptr<Rebuild> create(FRebuildFn rebuild_fn,
+                                         std::shared_ptr<Base> child) {
     return std::make_shared<Rebuild>(PrivateBase(), rebuild_fn, child);
   }
 
@@ -342,7 +341,8 @@ public:
 
 class IfThenElse : public Base {
 protected:
-  std::function<bool(std::weak_ptr<Base>)> if_fn;
+  typedef std::function<bool(std::weak_ptr<Base>)> FIfFn;
+  FIfFn if_fn;
   std::shared_ptr<Base> if_child;
   std::shared_ptr<Base> else_child;
 
@@ -350,14 +350,13 @@ public:
   using Base::get;
   using Base::get_field;
 
-  IfThenElse(PrivateBase, std::function<bool(std::weak_ptr<Base>)> if_fn,
-             std::shared_ptr<Base> if_child, std::shared_ptr<Base> else_child)
+  IfThenElse(PrivateBase, FIfFn if_fn, std::shared_ptr<Base> if_child,
+             std::shared_ptr<Base> else_child)
       : Base(PrivateBase()), if_fn(if_fn), if_child(if_child),
         else_child(else_child) {}
 
   static std::shared_ptr<IfThenElse>
-  create(std::function<bool(std::weak_ptr<Base>)> if_fn,
-         std::shared_ptr<Base> if_child,
+  create(FIfFn if_fn, std::shared_ptr<Base> if_child,
          std::shared_ptr<Base> else_child = nullptr) {
     return std::make_shared<IfThenElse>(PrivateBase(), if_fn, if_child,
                                         else_child);
