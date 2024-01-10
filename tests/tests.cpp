@@ -3,10 +3,10 @@
 
 #include <sstream>
 
-namespace etc = etcetera;
+using namespace etcetera;
 
 TEST_CASE("Int parsing test") {
-  auto field = etc::Int32ul::create();
+  auto field = Int32ul::create();
   std::stringstream ss;
   int32_t i = 0x12345678;
   ss.write(reinterpret_cast<const char *>(&i), sizeof(i));
@@ -15,8 +15,9 @@ TEST_CASE("Int parsing test") {
   int32_t x = field->get<int32_t>();
   REQUIRE(x == i);
 }
+
 TEST_CASE("Int building test") {
-  auto field = etc::Int32ul::create();
+  auto field = Int32ul::create();
   int32_t i = 0x12345678;
   std::stringstream orig;
   orig.write(reinterpret_cast<const char *>(&i), sizeof(i));
@@ -32,7 +33,7 @@ TEST_CASE("Int building test") {
 }
 
 TEST_CASE("Int8ul parsing test") {
-  auto field = etc::Int8ul::create();
+  auto field = Int8ul::create();
   std::stringstream ss, orig;
   int8_t i = 0x12;
   ss.write(reinterpret_cast<const char *>(&i), sizeof(i));
@@ -46,8 +47,8 @@ TEST_CASE("Int8ul parsing test") {
 }
 
 TEST_CASE("Structs parsing") {
-  auto s = etc::Struct::create(etc::Field("a", etc::Int32ul::create()),
-                               etc::Field("b", etc::Int32ul::create()));
+  auto s = Struct::create(Field("a", Int32ul::create()),
+                          Field("b", Int32ul::create()));
   std::stringstream data;
   int32_t a = 0x12345678;
   int32_t b = 0x87654321;
@@ -67,12 +68,10 @@ TEST_CASE("Structs parsing") {
 }
 
 TEST_CASE("nested Structs") {
-  auto s = etc::Struct::create(
-      etc::Field("a", etc::Int32ul::create()),
-      etc::Field("b", etc::Int32ul::create()),
-      etc::Field("c",
-                 etc::Struct::create(etc::Field("d", etc::Int32ul::create()),
-                                     etc::Field("e", etc::Int32ul::create()))));
+  auto s = Struct::create(
+      Field("a", Int32ul::create()), Field("b", Int32ul::create()),
+      Field("c", Struct::create(Field("d", Int32ul::create()),
+                                Field("e", Int32ul::create()))));
   std::stringstream data;
   int32_t a = 0x12345678;
   int32_t b = 0x87654321;
@@ -93,20 +92,20 @@ TEST_CASE("nested Structs") {
   REQUIRE(s->get<int32_t>("c", "_", "a") == a);
   REQUIRE(s->get<int32_t>("c", "_", "b") == b);
 
-  s->get_field<etc::Int32ul>("c", "_", "a").lock()->value = 12;
+  s->get_field<Int32ul>("c", "_", "a").lock()->value = 12;
   REQUIRE(s->get<int32_t>("c", "_", "a") == 12);
 }
 
 TEST_CASE("Struct building") {
-  auto s = etc::Struct::create(etc::Field("a", etc::Int32ul::create()),
-                               etc::Field("b", etc::Int32ul::create()));
+  auto s = Struct::create(Field("a", Int32ul::create()),
+                          Field("b", Int32ul::create()));
   std::stringstream data;
   int32_t a = 0x12345678;
   int32_t b = 0x87654321;
   data.write(reinterpret_cast<const char *>(&a), sizeof(a));
   data.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  s->get_field<etc::Int32ul>("a").lock()->value = a;
-  s->get_field<etc::Int32ul>("b").lock()->value = b;
+  s->get_field<Int32ul>("a").lock()->value = a;
+  s->get_field<Int32ul>("b").lock()->value = b;
   std::stringstream ss;
   s->build(ss);
   ss.seekg(0);
@@ -115,7 +114,7 @@ TEST_CASE("Struct building") {
 }
 
 TEST_CASE("Array") {
-  auto arr = etc::Array::create(4, []() { return etc::Int32ul::create(); });
+  auto arr = Array::create(4, []() { return Int32ul::create(); });
   std::stringstream data;
   int32_t a = 0x12345678;
   int32_t b = 0x87654321;
@@ -130,8 +129,9 @@ TEST_CASE("Array") {
   REQUIRE(arr->get<int32_t>(3) == b);
 
   data.seekg(0);
-  auto arr2 = etc::Array::create(2, []() {
-    return etc::Struct::create(FIELD("a", Int32ul), FIELD("b", Int32ul));
+  auto arr2 = Array::create(2, []() {
+    return Struct::create(Field("a", Int32ul::create()),
+                          Field("b", Int32ul::create()));
   });
   arr2->parse(data);
   for (size_t i = 0; i < 2; i++) {
@@ -146,7 +146,8 @@ TEST_CASE("Array") {
 }
 
 TEST_CASE("Nested Arrays") {
-  auto arr = ARRAY(2, ARR_ITEM(ARRAY(2, ARR_ITEM(etc::Int32ul::create()))));
+  auto arr = Array::create(
+      2, []() { return Array::create(2, []() { return Int32ul::create(); }); });
   std::stringstream data;
   std::stringstream orig;
   int32_t a = 0x12345678;
@@ -167,18 +168,17 @@ TEST_CASE("Nested Arrays") {
 }
 
 TEST_CASE("Rebuild static") {
-  auto s = etc::Struct::create(
-      FIELD("a", Int32ul),
-      etc::Field("b", etc::Rebuild::create(
-                          [](std::weak_ptr<etc::Base>) {
-                            return std::make_any<int32_t>(456);
-                          },
-                          etc::Int32ul::create())));
+  auto s = Struct::create(Field("a", Int32ul::create()),
+                          Field("b", Rebuild::create(
+                                         [](std::weak_ptr<Base>) {
+                                           return std::make_any<int32_t>(456);
+                                         },
+                                         Int32ul::create())));
 
   int32_t a = 123;
   int32_t b = 456;
 
-  s->get_field<etc::Int32ul>("a").lock()->value = a;
+  s->get_field<Int32ul>("a").lock()->value = a;
   std::stringstream orig;
   orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
   orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
@@ -189,18 +189,18 @@ TEST_CASE("Rebuild static") {
 }
 
 TEST_CASE("Rebuild dynamic") {
-  auto s = etc::Struct::create(
-      etc::Field("b", etc::Rebuild::create(
-                          [](std::weak_ptr<etc::Base> c) {
-                            return std::make_any<int32_t>(
-                                c.lock()->get<int32_t>("a") + 333);
-                          },
-                          etc::Int32ul::create())),
-      FIELD("a", Int32ul));
+  auto s =
+      Struct::create(Field("b", Rebuild::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return std::make_any<int32_t>(
+                                          c.lock()->get<int32_t>("a") + 333);
+                                    },
+                                    Int32ul::create())),
+                     Field("a", Int32ul::create()));
   int32_t a = 123;
   int32_t b = a + 333;
 
-  s->get_field<etc::Int32ul>("a").lock()->value = a;
+  s->get_field<Int32ul>("a").lock()->value = a;
   std::stringstream orig;
   orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
   orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
@@ -211,25 +211,25 @@ TEST_CASE("Rebuild dynamic") {
 }
 
 TEST_CASE("Rebuild nested") {
-  auto s = etc::Struct::create(
-      etc::Field("a", etc::Rebuild::create(
-                          [](std::weak_ptr<etc::Base> c) {
-                            return std::make_any<int32_t>(
-                                c.lock()->get<int32_t>("c") + 111);
-                          },
-                          etc::Int32ul::create())),
-      FIELD("b", Int32ul),
-      etc::Field("c", etc::Rebuild::create(
-                          [](std::weak_ptr<etc::Base> c) {
-                            return std::make_any<int32_t>(
-                                c.lock()->get<int32_t>("b") + 111);
-                          },
-                          etc::Int32ul::create())));
+  auto s =
+      Struct::create(Field("a", Rebuild::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return std::make_any<int32_t>(
+                                          c.lock()->get<int32_t>("c") + 111);
+                                    },
+                                    Int32ul::create())),
+                     Field("b", Int32ul::create()),
+                     Field("c", Rebuild::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return std::make_any<int32_t>(
+                                          c.lock()->get<int32_t>("b") + 111);
+                                    },
+                                    Int32ul::create())));
   int32_t b = 123;
   int32_t c = b + 111;
   int32_t a = c + 111;
 
-  s->get_field<etc::Int32ul>("b").lock()->value = b;
+  s->get_field<Int32ul>("b").lock()->value = b;
   std::stringstream orig;
   orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
   orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
@@ -240,17 +240,115 @@ TEST_CASE("Rebuild nested") {
   REQUIRE(ss.str() == orig.str());
 }
 
-/*
-TEST_CASE("LazyBound") {
-  auto s = etc::LazyBound::create([](std::function<std::shared_ptr<etc::Base>()>
-c){ return etc::Struct::create( FIELD("a", Int32ul), FIELD("b", Int32ul));
-  });
+TEST_CASE("IfThenElse") {
+  auto s =
+      Struct::create(Field("a", Int32ul::create()),
+                     Field("b", IfThenElse::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return c.lock()->get<int32_t>("a") == 123;
+                                    },
+                                    Int32ul::create(), Int64ul::create())));
+
+  int32_t a = 123;
+  int32_t b = 456;
+  int64_t c = 789;
+
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+
+  s->parse(orig);
+  REQUIRE(s->get<int32_t>("a") == a);
+  REQUIRE(s->get<int32_t>("b") == b);
+  REQUIRE(orig.peek() == EOF);
+
+  orig.str(std::string());
+  orig.seekg(0);
+  a += 1;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&c), sizeof(c));
+  s->parse(orig);
+  REQUIRE(s->get<int32_t>("a") == a);
+  REQUIRE(s->get<int64_t>("b") == c);
+  REQUIRE(orig.peek() == EOF);
 }
-*/
+
+TEST_CASE("If without Else") {
+  auto s =
+      Struct::create(Field("a", Int32ul::create()),
+                     Field("b", IfThenElse::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return c.lock()->get<int32_t>("a") == 123;
+                                    },
+                                    Int32ul::create())));
+  auto s2 =
+      Struct::create(Field("a", Int32ul::create()),
+                     Field("b", IfThenElse::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return c.lock()->get<int32_t>("a") == 123;
+                                    },
+                                    nullptr, Int32ul::create())));
+  int32_t a = 123;
+  int32_t b = 456;
+
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+
+  s->parse(orig);
+  REQUIRE(s->get<int32_t>("a") == a);
+  REQUIRE(s->get<int32_t>("b") == b);
+
+  orig.str(std::string());
+  orig.seekg(0);
+  a += 1;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  s->parse(orig);
+  REQUIRE(s->get<int32_t>("a") == a);
+  REQUIRE(orig.peek() == EOF);
+
+  orig.clear();
+  orig.seekg(0);
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  s2->parse(orig);
+  REQUIRE(s2->get<int32_t>("a") == a);
+  REQUIRE(s2->get<int32_t>("b") == a);
+  REQUIRE(orig.peek() == EOF);
+}
+
+TEST_CASE("LazyBound") {
+  auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
+    return Struct::create(
+        Field("a", Int32ul::create()), Field("b", Int32ul::create()),
+        Field("c", IfThenElse::create(
+                       [](std::weak_ptr<Base> c) {
+                         return c.lock()->get<int32_t>("a") == 123;
+                       },
+                       LazyBound::create(p.lock()->get_lazy_fn()))));
+  });
+
+  int32_t a = 123;
+  int32_t b = 456;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  s->parse(orig);
+  REQUIRE(s->get<int32_t>("a") == a);
+  REQUIRE(s->get<int32_t>("b") == b);
+  REQUIRE(s->get<int32_t>("c", "a") == a);
+  REQUIRE(s->get<int32_t>("c", "b") == b);
+  REQUIRE(s->get<int32_t>("c", "c", "a") == b);
+  REQUIRE(s->get<int32_t>("c", "c", "b") == b);
+  REQUIRE(orig.peek() == EOF);
+}
 /*
 TEST_CASE("Switch") {
-  auto switch = etc::Switch([](Base *c) { return "t1"; },
-                            SwitchField("t1", new etc::Int32ul()),
-                            SwitchField("t2", new etc::Int64ul()));
+  auto switch = Switch([](Base *c) { return "t1"; },
+                            SwitchField("t1", new Int32ul()),
+                            SwitchField("t2", new Int64ul()));
 }
 */

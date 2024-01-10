@@ -3,53 +3,53 @@
 
 #include <sstream>
 
-namespace etc = etcetera;
-/*
+using namespace etcetera;
+
 TEST_CASE("Int XML parsing") {
-  etc::Int32ul field;
-  field.value = 0x0;
+  auto field = Int32ul::create();
+  field->value = 0x0;
 
   auto xml_str = R"(<root test="123456789"></root>)";
   pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_str);
-  field.parse_xml(doc.child("root"), "test");
-  REQUIRE(field.value == 123456789);
+  doc.load_string(xml_str);
+  field->parse_xml(doc.child("root"), "test");
+  REQUIRE(field->value == 123456789);
 }
 
 TEST_CASE("Struct XML parsing") {
-  auto field = etc::Struct(etc::Field("a", new etc::Int32ul()),
-                           etc::Field("b", new etc::Int32ul()));
+  auto field = Struct::create(Field("a", Int32ul::create()),
+                              Field("b", Int32ul::create()));
 
   auto xml_str = R"(<root><test a="1" b="2"></root>)";
 
   pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_str);
-  field.parse_xml(doc.child("root"), "test");
-  REQUIRE(field.get<int32_t>("a") == 1);
-  REQUIRE(field.get<int32_t>("b") == 2);
+  doc.load_string(xml_str);
+  field->parse_xml(doc.child("root"), "test");
+  REQUIRE(field->get<int32_t>("a") == 1);
+  REQUIRE(field->get<int32_t>("b") == 2);
 }
 
 TEST_CASE("Nested Struct XML parsing") {
-  auto field = etc::Struct(
-      etc::Field("a", new etc::Int32ul()),
-      etc::Field("b", new etc::Struct(etc::Field("c", new etc::Int32ul()))));
+  auto field =
+      Struct::create(Field("a", Int32ul::create()),
+                     Field("b", Struct::create(Field("c", Int32ul::create()))));
 
   auto xml_str = R"(<root><test a="1"><b c="2"></b></test></root>)";
 
   pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_str);
-  field.parse_xml(doc.child("root"), "test");
-  REQUIRE(field.get<int32_t>("a") == 1);
-  REQUIRE(field.get<int32_t>("b", "c") == 2);
+  doc.load_string(xml_str);
+  field->parse_xml(doc.child("root"), "test");
+  REQUIRE(field->get<int32_t>("a") == 1);
+  REQUIRE(field->get<int32_t>("b", "c") == 2);
 }
 
 TEST_CASE("Int XML building") {
-  etc::Int32ul field;
-  field.value = 123456789;
+  auto field = Int32ul::create();
+  field->value = 123456789;
 
   pugi::xml_document doc;
   auto root = doc.append_child("root");
-  field.build_xml(root, "test");
+  field->build_xml(root, "test");
   std::stringstream ss;
   doc.save(ss);
 
@@ -60,47 +60,70 @@ TEST_CASE("Int XML building") {
 }
 
 TEST_CASE("Struct XML building") {
-  auto field = etc::Struct(etc::Field("a", new etc::Int32ul()),
-                           etc::Field("b", new etc::Int32ul()));
-  field.get_field<etc::Int32ul>("a")->value = 1;
-  field.get_field<etc::Int32ul>("b")->value = 2;
+  auto field = Struct::create(Field("a", Int32ul::create()),
+                              Field("b", Int32ul::create()));
+  field->get_field<Int32ul>("a").lock()->value = 1;
+  field->get_field<Int32ul>("b").lock()->value = 2;
 
   pugi::xml_document doc;
   auto root = doc.append_child("root");
-  field.build_xml(root, "test");
+  field->build_xml(root, "test");
   std::stringstream ss;
   doc.save(ss);
 
   auto expected = R"(<?xml version="1.0"?>
 <root>
-        <test a="1" b="2" />
+	<test a="1" b="2" />
 </root>
 )";
   REQUIRE(ss.str() == expected);
 }
-*/
-/*
+
 TEST_CASE("Array XML Building") {
-  auto field =
-      etc::Array(2, ARR_ITEM(etc::Struct(etc::Field("a", new etc::Int32ul()),
-                                         etc::Field("b", new etc::Int32ul()))));
-  field.get_field<etc::Int32ul>(0, "a")->value = 1;
-  field.get_field<etc::Int32ul>(0, "b")->value = 2;
-  field.get_field<etc::Int32ul>(1, "a")->value = 3;
-  field.get_field<etc::Int32ul>(1, "b")->value = 4;
+  auto field = Array::create(2, []() {
+    return Struct::create(Field("a", Int32ul::create()),
+                          Field("b", Int32ul::create()));
+  });
+  field->init_fields();
+  field->get_field<Int32ul>(0, "a").lock()->value = 1;
+  field->get_field<Int32ul>(0, "b").lock()->value = 2;
+  field->get_field<Int32ul>(1, "a").lock()->value = 3;
+  field->get_field<Int32ul>(1, "b").lock()->value = 4;
 
   pugi::xml_document doc;
   auto root = doc.append_child("root");
-  field.build_xml(root, "test");
+  field->build_xml(root, "test");
   std::stringstream ss;
   doc.save(ss);
 
   auto expected = R"(<?xml version="1.0"?>
 <root>
-  <test a="1" b="2" />
-  <test a="3" b="4" />
+	<test a="1" b="2" />
+	<test a="3" b="4" />
 </root>
 )";
   REQUIRE(ss.str() == expected);
 }
-*/
+
+TEST_CASE("LazyBound XML Parsing") {
+  auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
+    return Struct::create(
+        Field("a", Int32ul::create()), Field("b", Int32ul::create()),
+        Field("c", IfThenElse::create(
+                       [](std::weak_ptr<Base> c) {
+                         return c.lock()->get<int32_t>("a") == 123;
+                       },
+                       LazyBound::create(p.lock()->get_lazy_fn()))));
+  });
+
+  int32_t a = 123;
+  int32_t b = 456;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  s->parse(orig);
+}
