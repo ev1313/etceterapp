@@ -147,6 +147,30 @@ using UInt8ul = IntegralType<uint8_t>;
 using UInt16ul = IntegralType<uint16_t>;
 using UInt32ul = IntegralType<uint32_t>;
 using UInt64ul = IntegralType<uint64_t>;
+using Float32ul = IntegralType<float>;
+using Float64ul = IntegralType<double>;
+
+template <typename STR> class String : public Base {
+protected:
+public:
+  using Base::get;
+  using Base::get_field;
+  std::string value;
+  String(PrivateBase) : Base(PrivateBase()) {}
+  static std::shared_ptr<String> create() {
+    return std::make_shared<String>(PrivateBase());
+  }
+
+  void parse_xml(pugi::xml_node const &node, std::string name) override {
+    auto s = node.attribute(name.c_str());
+    value = s;
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    parent.append_attribute(name.c_str()) = value;
+    return parent;
+  }
+};
 
 typedef std::pair<std::string, std::shared_ptr<Base>> Field;
 
