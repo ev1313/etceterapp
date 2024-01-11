@@ -6,7 +6,7 @@
 using namespace etcetera;
 
 TEST_CASE("Int XML parsing") {
-  auto field = Int32ul::create();
+  auto field = Int32sl::create();
   field->value = 0x0;
 
   auto xml_str = R"(<root test="123456789"></root>)";
@@ -17,8 +17,8 @@ TEST_CASE("Int XML parsing") {
 }
 
 TEST_CASE("Struct XML parsing") {
-  auto field = Struct::create(Field("a", Int32ul::create()),
-                              Field("b", Int32ul::create()));
+  auto field = Struct::create(Field("a", Int32sl::create()),
+                              Field("b", Int32sl::create()));
 
   auto xml_str = R"(<root><test a="1" b="2"></root>)";
 
@@ -31,8 +31,8 @@ TEST_CASE("Struct XML parsing") {
 
 TEST_CASE("Nested Struct XML parsing") {
   auto field =
-      Struct::create(Field("a", Int32ul::create()),
-                     Field("b", Struct::create(Field("c", Int32ul::create()))));
+      Struct::create(Field("a", Int32sl::create()),
+                     Field("b", Struct::create(Field("c", Int32sl::create()))));
 
   auto xml_str = R"(<root><test a="1"><b c="2"></b></test></root>)";
 
@@ -44,7 +44,7 @@ TEST_CASE("Nested Struct XML parsing") {
 }
 
 TEST_CASE("Int XML building") {
-  auto field = Int32ul::create();
+  auto field = Int32sl::create();
   field->value = 123456789;
 
   pugi::xml_document doc;
@@ -60,10 +60,10 @@ TEST_CASE("Int XML building") {
 }
 
 TEST_CASE("Struct XML building") {
-  auto field = Struct::create(Field("a", Int32ul::create()),
-                              Field("b", Int32ul::create()));
-  field->get_field<Int32ul>("a").lock()->value = 1;
-  field->get_field<Int32ul>("b").lock()->value = 2;
+  auto field = Struct::create(Field("a", Int32sl::create()),
+                              Field("b", Int32sl::create()));
+  field->get_field<Int32sl>("a").lock()->value = 1;
+  field->get_field<Int32sl>("b").lock()->value = 2;
 
   pugi::xml_document doc;
   auto root = doc.append_child("root");
@@ -81,14 +81,14 @@ TEST_CASE("Struct XML building") {
 
 TEST_CASE("Array XML Building") {
   auto field = Array::create(2, []() {
-    return Struct::create(Field("a", Int32ul::create()),
-                          Field("b", Int32ul::create()));
+    return Struct::create(Field("a", Int32sl::create()),
+                          Field("b", Int32sl::create()));
   });
   field->init_fields();
-  field->get_field<Int32ul>(0, "a").lock()->value = 1;
-  field->get_field<Int32ul>(0, "b").lock()->value = 2;
-  field->get_field<Int32ul>(1, "a").lock()->value = 3;
-  field->get_field<Int32ul>(1, "b").lock()->value = 4;
+  field->get_field<Int32sl>(0, "a").lock()->value = 1;
+  field->get_field<Int32sl>(0, "b").lock()->value = 2;
+  field->get_field<Int32sl>(1, "a").lock()->value = 3;
+  field->get_field<Int32sl>(1, "b").lock()->value = 4;
 
   pugi::xml_document doc;
   auto root = doc.append_child("root");
@@ -108,7 +108,7 @@ TEST_CASE("Array XML Building") {
 TEST_CASE("LazyBound XML Parsing") {
   auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
     return Struct::create(
-        Field("a", Int32ul::create()), Field("b", Int32ul::create()),
+        Field("a", Int32sl::create()), Field("b", Int32sl::create()),
         Field("c", IfThenElse::create(
                        [](std::weak_ptr<Base> c) {
                          return c.lock()->get<int32_t>("a") == 123;

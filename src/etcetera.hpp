@@ -109,7 +109,8 @@ public:
   }
 };
 
-template <typename TIntType> class IntegralType : public Base {
+template <typename TIntType, std::endian Endianess>
+class IntegralType : public Base {
 public:
   using Base::get;
   using Base::get_field;
@@ -142,16 +143,26 @@ public:
     return parent;
   }
 };
-using Int8ul = IntegralType<int8_t>;
-using Int16ul = IntegralType<int16_t>;
-using Int32ul = IntegralType<int32_t>;
-using Int64ul = IntegralType<int64_t>;
-using UInt8ul = IntegralType<uint8_t>;
-using UInt16ul = IntegralType<uint16_t>;
-using UInt32ul = IntegralType<uint32_t>;
-using UInt64ul = IntegralType<uint64_t>;
-using Float32ul = IntegralType<float>;
-using Float64ul = IntegralType<double>;
+using Int8sl = IntegralType<int8_t, std::endian::little>;
+using Int16sl = IntegralType<int16_t, std::endian::little>;
+using Int32sl = IntegralType<int32_t, std::endian::little>;
+using Int64sl = IntegralType<int64_t, std::endian::little>;
+using Int8ul = IntegralType<uint8_t, std::endian::little>;
+using Int16ul = IntegralType<uint16_t, std::endian::little>;
+using Int32ul = IntegralType<uint32_t, std::endian::little>;
+using Int64ul = IntegralType<uint64_t, std::endian::little>;
+using Float32l = IntegralType<float, std::endian::little>;
+using Float64l = IntegralType<double, std::endian::little>;
+using Int8sb = IntegralType<int8_t, std::endian::big>;
+using Int16sb = IntegralType<int16_t, std::endian::big>;
+using Int32sb = IntegralType<int32_t, std::endian::big>;
+using Int64sb = IntegralType<int64_t, std::endian::big>;
+using Int8ub = IntegralType<uint8_t, std::endian::big>;
+using Int16ub = IntegralType<uint16_t, std::endian::big>;
+using Int32ub = IntegralType<uint32_t, std::endian::big>;
+using Int64ub = IntegralType<uint64_t, std::endian::big>;
+using Float32b = IntegralType<float, std::endian::big>;
+using Float64b = IntegralType<double, std::endian::big>;
 
 class String : public Base {
 protected:
