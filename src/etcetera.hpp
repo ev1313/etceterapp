@@ -1,5 +1,8 @@
 #pragma once
 
+#include "utfconv.hpp"
+#include <iostream>
+
 #include <any>
 #include <cassert>
 #include <functional>
@@ -150,27 +153,59 @@ using UInt64ul = IntegralType<uint64_t>;
 using Float32ul = IntegralType<float>;
 using Float64ul = IntegralType<double>;
 
-template <typename STR> class String : public Base {
+template <typename TStringType> class String : public Base {
 protected:
 public:
   using Base::get;
   using Base::get_field;
-  std::string value;
+  TStringType value;
   String(PrivateBase) : Base(PrivateBase()) {}
   static std::shared_ptr<String> create() {
     return std::make_shared<String>(PrivateBase());
   }
 
+  std::any get() override { return value; }
+  std::any get_parsed() override { return value; }
+
   void parse_xml(pugi::xml_node const &node, std::string name) override {
     auto s = node.attribute(name.c_str());
-    value = s;
+    // value = std::string(s.as_string());
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
-    parent.append_attribute(name.c_str()) = value;
+    parent.append_attribute(name.c_str()) = 1;
     return parent;
   }
 };
+
+template <typename TStringType = std::string>
+class CString : public String<TStringType> {
+public:
+  std::endian endianess;
+  using Base::get;
+  using Base::get_field;
+  CString(std::endian e, Base::PrivateBase)
+      : String<TStringType>(Base::PrivateBase()), endianess(e) {}
+  static std::shared_ptr<CString> create(std::endian e = std::endian::native) {
+    return std::make_shared<CString>(e, Base::PrivateBase());
+  }
+  std::any parse(std::iostream &stream) override {
+    char c[sizeof(typename TStringType::value_type)];
+    this->value.clear();
+    while (stream.read(c, sizeof(typename TStringType::value_type))) {
+      this->value.push_back(*((typename TStringType::value_type *)c));
+    }
+    return this->value;
+  }
+  void build(std::iostream &stream) override {
+    for (auto &c : this->value) {
+      stream.write((char *)&c, sizeof(typename TStringType::value_type));
+    }
+  }
+};
+using CString8 = CString<std::string>;
+using CString16 = CString<std::u16string>;
+using CString32 = CString<std::u32string>;
 
 typedef std::pair<std::string, std::shared_ptr<Base>> Field;
 
