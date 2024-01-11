@@ -55,9 +55,7 @@ TEST_CASE("String UTF-32") {
   std::u32string s = U"abcd";
   orig.write((char *)s.c_str(), s.length() * sizeof(char32_t));
   auto ret = field->parse(orig);
-  REQUIRE(field->value == s);
-  REQUIRE(std::any_cast<std::u32string>(ret) == s);
-  REQUIRE(field->get<std::u32string>() == s);
+  REQUIRE(Utf8To32(field->value) == s);
   field->build(ss);
 
   ss.seekg(0);
@@ -71,9 +69,7 @@ TEST_CASE("String UTF-16") {
   std::u16string s = u"abcd";
   orig.write((char *)s.c_str(), s.length() * sizeof(char16_t));
   auto ret = field->parse(orig);
-  REQUIRE(field->value == s);
-  REQUIRE(std::any_cast<std::u16string>(ret) == s);
-  REQUIRE(field->get<std::u16string>() == s);
+  REQUIRE(Utf32To16(Utf8To32(field->value)) == s);
   field->build(ss);
 
   ss.seekg(0);

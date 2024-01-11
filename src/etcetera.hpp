@@ -153,52 +153,65 @@ using UInt64ul = IntegralType<uint64_t>;
 using Float32ul = IntegralType<float>;
 using Float64ul = IntegralType<double>;
 
-template <typename TStringType> class String : public Base {
+class String : public Base {
 protected:
 public:
   using Base::get;
   using Base::get_field;
-  TStringType value;
+  std::string value;
   String(PrivateBase) : Base(PrivateBase()) {}
-  static std::shared_ptr<String> create() {
-    return std::make_shared<String>(PrivateBase());
-  }
 
   std::any get() override { return value; }
   std::any get_parsed() override { return value; }
 
   void parse_xml(pugi::xml_node const &node, std::string name) override {
-    auto s = node.attribute(name.c_str());
-    // value = std::string(s.as_string());
+    value = node.attribute(name.c_str()).as_string();
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
-    parent.append_attribute(name.c_str()) = 1;
+    parent.append_attribute(name.c_str()) = this->value.c_str();
     return parent;
   }
 };
 
-template <typename TStringType = std::string>
-class CString : public String<TStringType> {
+template <typename TStringType = std::string> class CString : public String {
 public:
   std::endian endianess;
   using Base::get;
   using Base::get_field;
   CString(std::endian e, Base::PrivateBase)
-      : String<TStringType>(Base::PrivateBase()), endianess(e) {}
+      : String(PrivateBase()), endianess(e) {}
   static std::shared_ptr<CString> create(std::endian e = std::endian::native) {
-    return std::make_shared<CString>(e, Base::PrivateBase());
+    return std::make_shared<CString>(e, PrivateBase());
   }
   std::any parse(std::iostream &stream) override {
     char c[sizeof(typename TStringType::value_type)];
-    this->value.clear();
+    TStringType s;
+    s.clear();
     while (stream.read(c, sizeof(typename TStringType::value_type))) {
-      this->value.push_back(*((typename TStringType::value_type *)c));
+      s.push_back(*((typename TStringType::value_type *)c));
+    }
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      this->value = Utf32To8(Utf16To32(s));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      this->value = Utf32To8(s);
+    } else {
+      this->value = s;
     }
     return this->value;
   }
   void build(std::iostream &stream) override {
-    for (auto &c : this->value) {
+    TStringType s;
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      s = Utf32To16(Utf8To32(this->value));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      s = Utf8To32(this->value);
+    } else {
+      s = this->value;
+    }
+    for (auto &c : s) {
       stream.write((char *)&c, sizeof(typename TStringType::value_type));
     }
   }
