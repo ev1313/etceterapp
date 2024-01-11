@@ -18,6 +18,17 @@ TEST_CASE("Int parsing test") {
   REQUIRE(x == i);
 }
 
+TEST_CASE("Int big endian parsing test") {
+  auto field = Int32sb::create();
+  std::stringstream ss;
+  int32_t i = 0x12345678;
+  ss.write(reinterpret_cast<const char *>(&i), sizeof(i));
+  REQUIRE(std::any_cast<int32_t>(field->parse(ss)) == std::byteswap(i));
+  REQUIRE(field->value == std::byteswap(i));
+  int32_t x = field->get<int32_t>();
+  REQUIRE(x == std::byteswap(i));
+}
+
 TEST_CASE("Int building test") {
   auto field = Int32sl::create();
   int32_t i = 0x12345678;
@@ -28,10 +39,20 @@ TEST_CASE("Int building test") {
   field->build(ss);
   ss.seekg(0);
   orig.seekg(0);
-  REQUIRE(ss.get() == orig.get());
-  REQUIRE(ss.get() == orig.get());
-  REQUIRE(ss.get() == orig.get());
-  REQUIRE(ss.get() == orig.get());
+  REQUIRE(ss.str() == orig.str());
+}
+
+TEST_CASE("Int big endian building test") {
+  auto field = Int32sb::create();
+  int32_t i = 0x12345678;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&i), sizeof(i));
+  std::stringstream ss;
+  field->value = std::byteswap(i);
+  field->build(ss);
+  ss.seekg(0);
+  orig.seekg(0);
+  REQUIRE(ss.str() == orig.str());
 }
 
 TEST_CASE("Int8ul parsing test") {

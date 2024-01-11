@@ -78,11 +78,9 @@ public:
     return field.lock()->get<T>(args...);
   }
 
-  virtual std::any get_parsed() = 0;
+  virtual std::any get_parsed() { return get(); };
   template <typename T> T get_parsed() { return std::any_cast<T>(get()); }
-  virtual std::any get_parsed(std::string) {
-    throw std::runtime_error("Not implemented");
-  };
+  virtual std::any get_parsed(std::string key) { return get(key); };
   template <typename T> T get_parsed(std::string key) {
     return std::any_cast<T>(get_parsed(key));
   }
@@ -121,13 +119,19 @@ public:
   }
   std::any parse(std::iostream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(value));
+    if constexpr (Endianess != std::endian::native) {
+      value = std::byteswap(value);
+    }
     return value;
   }
   void build(std::iostream &stream) override {
-    stream.write(reinterpret_cast<char *>(&value), sizeof(value));
+    auto val = value;
+    if constexpr (Endianess != std::endian::native) {
+      val = std::byteswap(value);
+    }
+    stream.write(reinterpret_cast<char *>(&val), sizeof(val));
   }
   std::any get() override { return value; }
-  std::any get_parsed() override { return value; }
   void set(std::any value) override {
     this->value = std::any_cast<TIntType>(value);
   }
@@ -173,7 +177,6 @@ public:
   String(PrivateBase) : Base(PrivateBase()) {}
 
   std::any get() override { return value; }
-  std::any get_parsed() override { return value; }
 
   void parse_xml(pugi::xml_node const &node, std::string name) override {
     value = node.attribute(name.c_str()).as_string();
@@ -275,10 +278,6 @@ public:
 
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(std::string key) { return fields[key]->get(); }
-  std::any get_parsed() override {
-    throw std::runtime_error("Not implemented");
-  }
-  std::any get_parsed(std::string key) { return fields[key]->get(); }
 
   std::weak_ptr<Base> get_field(std::string key) override {
     if (key == "_") {
@@ -352,10 +351,6 @@ public:
 
   std::any get() override { throw std::runtime_error("Not implemented"); }
   std::any get(size_t key) override { return data[key]->get(); }
-  std::any get_parsed() override {
-    throw std::runtime_error("Not implemented");
-  }
-  std::any get_parsed(size_t key) override { return data[key]->get(); }
 
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 
@@ -458,7 +453,6 @@ public:
       return else_child->get();
     }
   }
-  std::any get_parsed() override { return get(); }
 
   std::weak_ptr<Base> get_field(std::string key) override {
     if (if_fn(this->parent)) {
