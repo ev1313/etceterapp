@@ -40,9 +40,22 @@ TEST_CASE("Int building test") {
   REQUIRE(ss.str() == orig.str());
 }
 
-TEST_CASE("Int big endian building test") {
+TEST_CASE("Int32 big endian building test") {
   auto field = Int32sb::create();
   int32_t i = 0x12345678;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&i), sizeof(i));
+  std::stringstream ss;
+  field->value = std::byteswap(i);
+  field->build(ss);
+  ss.seekg(0);
+  orig.seekg(0);
+  REQUIRE(ss.str() == orig.str());
+}
+
+TEST_CASE("Int64 big endian building test") {
+  auto field = Int64sb::create();
+  int64_t i = 0x123456789abcdef;
   std::stringstream orig;
   orig.write(reinterpret_cast<const char *>(&i), sizeof(i));
   std::stringstream ss;

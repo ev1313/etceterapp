@@ -26,27 +26,42 @@ public:
   }
 };
 
-template <typename TStringType = std::string> class CString : public String {
+template <typename TStringType = std::string,
+          std::endian Endianess = std::endian::native>
+class CString : public String {
 public:
-  std::endian endianess;
   using Base::get;
   using Base::get_field;
-  CString(std::endian e, Base::PrivateBase)
-      : String(PrivateBase()), endianess(e) {}
-  static std::shared_ptr<CString> create(std::endian e = std::endian::native) {
-    return std::make_shared<CString>(e, PrivateBase());
+  CString(Base::PrivateBase) : String(PrivateBase()) {}
+  static std::shared_ptr<CString> create() {
+    return std::make_shared<CString>(PrivateBase());
   }
 
   size_t get_size(std::weak_ptr<Base>) override {
-    return value.length() * sizeof(typename TStringType::value_type);
+    TStringType s;
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      s = Utf32To16(Utf8To32(this->value));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      s = Utf8To32(this->value);
+    } else {
+      s = this->value;
+    }
+    return s.length() * sizeof(typename TStringType::value_type);
   }
 
   std::any parse(std::iostream &stream) override {
-    char c[sizeof(typename TStringType::value_type)];
+    union {
+      typename TStringType::value_type c;
+      char bytes[sizeof(typename TStringType::value_type)];
+    } data;
     TStringType s;
     s.clear();
-    while (stream.read(c, sizeof(typename TStringType::value_type))) {
-      s.push_back(*((typename TStringType::value_type *)c));
+    while (stream.read(data.bytes, sizeof(typename TStringType::value_type))) {
+      if constexpr (Endianess != std::endian::native) {
+        data.c = std::byteswap(data.c);
+      }
+      s.push_back(data.c);
     }
     if constexpr (std::is_same<std::u16string, TStringType>()) {
       // FIXME: this is a hack
@@ -69,12 +84,18 @@ public:
       s = this->value;
     }
     for (auto &c : s) {
+      if constexpr (Endianess != std::endian::native) {
+        c = std::byteswap(c);
+      }
       stream.write((char *)&c, sizeof(typename TStringType::value_type));
     }
   }
 };
-using CString8 = CString<std::string>;
-using CString16 = CString<std::u16string>;
-using CString32 = CString<std::u32string>;
+using CString8l = CString<std::string, std::endian::little>;
+using CString16l = CString<std::u16string, std::endian::little>;
+using CString32l = CString<std::u32string, std::endian::little>;
+using CString8b = CString<std::string, std::endian::big>;
+using CString16b = CString<std::u16string, std::endian::big>;
+using CString32b = CString<std::u32string, std::endian::big>;
 
 } // namespace etcetera
