@@ -32,9 +32,16 @@ endif ()
 
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/version.h)
 
-add_library(etceterapp src/etcetera.cpp)
-target_link_libraries(etceterapp PUBLIC argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml)
-target_include_directories(etceterapp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+add_library(etceterapp INTERFACE)
+target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml)
+target_include_directories(etceterapp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_executable(tests tests/tests.cpp tests/tests_xml.cpp)
+add_executable(tests
+  tests/basic_tests.cpp
+  tests/conditional_tests.cpp
+  tests/number_tests.cpp
+  tests/special_tests.cpp
+  tests/string_tests.cpp
+  tests/tests_xml.cpp
+  )
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain etceterapp)

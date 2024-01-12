@@ -1,4 +1,7 @@
-#include "etcetera.hpp"
+#include "conditional.hpp"
+#include "number.hpp"
+#include "special.hpp"
+#include "string.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 #include <sstream>
