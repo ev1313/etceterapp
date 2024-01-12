@@ -125,3 +125,15 @@ TEST_CASE("Nested Arrays") {
   REQUIRE(arr->get<int32_t>(1, 0) == a);
   REQUIRE(arr->get<int32_t>(1, 1) == b);
 }
+
+TEST_CASE("Size Test Structs") {
+  auto s = Struct::create(Field("a", Int32sl::create()),
+                          Field("b", Int32sl::create()));
+  REQUIRE(s->get_size({}) == 8);
+}
+
+TEST_CASE("Size Test Arrays") {
+  auto arr = Array::create(4, []() { return Int32sl::create(); });
+  arr->init_fields();
+  REQUIRE(arr->get_size({}) == 16);
+}

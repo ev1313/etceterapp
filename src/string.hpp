@@ -38,7 +38,7 @@ public:
   }
 
   size_t get_size(std::weak_ptr<Base>) override {
-    return value.length() * sizeof(char8_t);
+    return value.length() * sizeof(typename TStringType::value_type);
   }
 
   std::any parse(std::iostream &stream) override {
