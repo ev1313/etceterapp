@@ -275,4 +275,109 @@ public:
   }
 };
 
+template <typename T> class Const : public Base {
+public:
+  using Base::get;
+  using Base::get_field;
+  T value;
+  Const(T val, PrivateBase) : Base(PrivateBase()), value(val) {}
+  static std::shared_ptr<Const> create(T val) {
+    return std::make_shared<Const>(val, PrivateBase());
+  }
+
+  std::any get() override { return value; }
+
+  size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
+
+  std::any parse(std::iostream &stream) override {
+    stream.read(reinterpret_cast<char *>(&value), sizeof(T));
+    return value;
+  }
+
+  void build(std::iostream &stream) override {
+    stream.write(reinterpret_cast<char *>(&value), sizeof(T));
+  }
+
+  void parse_xml(pugi::xml_node const &, std::string) override {}
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string) override {
+    return parent;
+  }
+};
+
+class BytesConst : public Base {
+protected:
+  std::string value;
+
+public:
+  using Base::get;
+  using Base::get_field;
+  BytesConst(std::string val, PrivateBase) : Base(PrivateBase()), value(val) {}
+  static std::shared_ptr<BytesConst> create(std::string val) {
+    return std::make_shared<BytesConst>(val, PrivateBase());
+  }
+
+  std::any get() override { return value; }
+
+  size_t get_size(std::weak_ptr<Base>) override { return value.length(); }
+
+  std::any parse(std::iostream &stream) override {
+    std::string tmp;
+    tmp.resize(value.length());
+    stream.read(reinterpret_cast<char *>(&value), tmp.length());
+    if (tmp != value) {
+      throw std::runtime_error("BytesConst: expected " + value + ", got " +
+                               tmp);
+    }
+    return value;
+  }
+
+  void build(std::iostream &stream) override {
+    stream.write(value.data(), value.length());
+  }
+};
+
+class Bytes : public Base {
+protected:
+  size_t size;
+
+public:
+  using Base::get;
+  using Base::get_field;
+  std::vector<uint8_t> value;
+  Bytes(size_t s, PrivateBase) : Base(PrivateBase()), size(s) {
+    value.resize(s);
+  }
+  static std::shared_ptr<Bytes> create(size_t s) {
+    return std::make_shared<Bytes>(s, PrivateBase());
+  }
+
+  bool is_simple_type() override { return true; }
+
+  std::any get() override { return value; }
+
+  size_t get_size(std::weak_ptr<Base>) override { return size; }
+
+  std::any parse(std::iostream &stream) override {
+    value.resize(size);
+    stream.read(reinterpret_cast<char *>(value.data()), value.size());
+    return value;
+  }
+
+  void build(std::iostream &stream) override {
+    stream.write(reinterpret_cast<char *>(value.data()), value.size());
+  }
+
+  void parse_xml(pugi::xml_node const &node, std::string name) override {}
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    std::string s;
+    for (auto &c : value) {
+      s += std::format("{}", c);
+    }
+    parent.append_attribute(name.c_str()) = s.c_str();
+    return parent;
+  }
+};
+
 } // namespace etcetera

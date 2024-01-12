@@ -4,6 +4,46 @@
 
 using namespace etcetera;
 
+TEST_CASE("Const int") {
+  auto field = Const<int32_t>::create(0x12345678);
+  std::stringstream data;
+  int32_t a = 0x12345678;
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  REQUIRE(std::any_cast<int32_t>(field->parse(data)) == a);
+  std::stringstream ss;
+  field->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str() == data.str());
+}
+
+TEST_CASE("Const string") {
+  auto field = BytesConst::create("\x00\x00\x01\x02\x03\x04");
+  std::stringstream data;
+  std::string a = "\x00\x00\x01\x02\x03\x04";
+  data << a;
+  REQUIRE(std::any_cast<std::string>(field->parse(data)) == a);
+  std::stringstream ss;
+  field->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str() == data.str());
+}
+
+TEST_CASE("Bytes") {
+  auto field = Bytes::create(6);
+  std::stringstream data;
+  std::vector<uint8_t> b = {0x00, 0x00, 0x01, 0x02, 0x03, 0x04};
+  data.write(reinterpret_cast<char *>(b.data()), b.size());
+  REQUIRE(std::any_cast<std::vector<uint8_t>>(field->parse(data)) == b);
+  std::stringstream ss;
+  field->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str().size() == data.str().size());
+  REQUIRE(ss.str() == data.str());
+}
+
 TEST_CASE("Structs parsing") {
   auto s = Struct::create(Field("a", Int32sl::create()),
                           Field("b", Int32sl::create()));
