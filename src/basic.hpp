@@ -287,6 +287,8 @@ public:
 
   std::any get() override { return value; }
 
+  bool is_simple_type() override { return true; }
+
   size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
 
   std::any parse(std::iostream &stream) override {
@@ -317,6 +319,8 @@ public:
     return std::make_shared<BytesConst>(val, PrivateBase());
   }
 
+  bool is_simple_type() override { return true; }
+
   std::any get() override { return value; }
 
   size_t get_size(std::weak_ptr<Base>) override { return value.length(); }
@@ -334,6 +338,12 @@ public:
 
   void build(std::iostream &stream) override {
     stream.write(value.data(), value.length());
+  }
+
+  void parse_xml(pugi::xml_node const &, std::string) override {}
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string) override {
+    return parent;
   }
 };
 
@@ -368,12 +378,26 @@ public:
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {}
+  void parse_xml(pugi::xml_node const &node, std::string name) override {
+    std::string attr = node.attribute(name.c_str()).as_string();
+    if (attr.length() != size * 2) {
+      throw std::runtime_error("Bytes: expected " + std::to_string(size * 2) +
+                               " characters, got " +
+                               std::to_string(attr.length()));
+    }
+    value.clear();
+    value.resize(size);
+
+    for (size_t i = 0; i < size; i++) {
+      std::string tmp = attr.substr(i * 2, 2);
+      value[i] = std::stoi(tmp, nullptr, 16);
+    }
+  }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
     std::string s;
     for (auto &c : value) {
-      s += std::format("{}", c);
+      s += std::format("{:02X}", static_cast<uint8_t>(c));
     }
     parent.append_attribute(name.c_str()) = s.c_str();
     return parent;

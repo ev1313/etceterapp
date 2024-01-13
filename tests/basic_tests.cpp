@@ -17,12 +17,46 @@ TEST_CASE("Const int") {
   REQUIRE(ss.str() == data.str());
 }
 
+TEST_CASE("Const int XML") {
+  auto field = Const<int32_t>::create(0x12345678);
+  std::stringstream data;
+  int32_t a = 0x12345678;
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  REQUIRE(std::any_cast<int32_t>(field->parse(data)) == a);
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  field->build_xml(root, "test");
+  REQUIRE(!root.attribute("test"));
+  std::stringstream ss;
+  field->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str() == data.str());
+}
+
 TEST_CASE("Const string") {
   auto field = BytesConst::create("\x00\x00\x01\x02\x03\x04");
   std::stringstream data;
   std::string a = "\x00\x00\x01\x02\x03\x04";
   data << a;
   REQUIRE(std::any_cast<std::string>(field->parse(data)) == a);
+  std::stringstream ss;
+  field->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str() == data.str());
+}
+
+TEST_CASE("Const string XML empty") {
+  auto field = BytesConst::create("\x00\x00\x01\x02\x03\x04");
+  std::stringstream data;
+  std::string a = "\x00\x00\x01\x02\x03\x04";
+  data << a;
+  REQUIRE(std::any_cast<std::string>(field->parse(data)) == a);
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  field->build_xml(root, "test");
+  REQUIRE(!root.attribute("test"));
   std::stringstream ss;
   field->build(ss);
   ss.seekg(0);
@@ -38,6 +72,26 @@ TEST_CASE("Bytes") {
   REQUIRE(std::any_cast<std::vector<uint8_t>>(field->parse(data)) == b);
   std::stringstream ss;
   field->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str().size() == data.str().size());
+  REQUIRE(ss.str() == data.str());
+}
+
+TEST_CASE("Bytes XML") {
+  auto field = Bytes::create(6);
+  std::stringstream data;
+  std::vector<uint8_t> b = {0x00, 0x00, 0x01, 0x02, 0x03, 0x04};
+  data.write(reinterpret_cast<char *>(b.data()), b.size());
+  REQUIRE(std::any_cast<std::vector<uint8_t>>(field->parse(data)) == b);
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  field->build_xml(root, "test");
+  REQUIRE(std::string(root.attribute("test").as_string()) == "000001020304");
+  std::stringstream ss;
+  auto field2 = Bytes::create(6);
+  field2->parse_xml(root, "test");
+  field2->build(ss);
   ss.seekg(0);
   data.seekg(0);
   REQUIRE(ss.str().size() == data.str().size());
@@ -176,4 +230,77 @@ TEST_CASE("Size Test Arrays") {
   auto arr = Array::create(4, []() { return Int32sl::create(); });
   arr->init_fields();
   REQUIRE(arr->get_size({}) == 16);
+}
+
+TEST_CASE("Struct XML parsing") {
+  auto field = Struct::create(Field("a", Int32sl::create()),
+                              Field("b", Int32sl::create()));
+
+  auto xml_str = R"(<root><test a="1" b="2"></root>)";
+
+  pugi::xml_document doc;
+  doc.load_string(xml_str);
+  field->parse_xml(doc.child("root"), "test");
+  REQUIRE(field->get<int32_t>("a") == 1);
+  REQUIRE(field->get<int32_t>("b") == 2);
+}
+
+TEST_CASE("Nested Struct XML parsing") {
+  auto field =
+      Struct::create(Field("a", Int32sl::create()),
+                     Field("b", Struct::create(Field("c", Int32sl::create()))));
+
+  auto xml_str = R"(<root><test a="1"><b c="2"></b></test></root>)";
+
+  pugi::xml_document doc;
+  doc.load_string(xml_str);
+  field->parse_xml(doc.child("root"), "test");
+  REQUIRE(field->get<int32_t>("a") == 1);
+  REQUIRE(field->get<int32_t>("b", "c") == 2);
+}
+
+TEST_CASE("Struct XML building") {
+  auto field = Struct::create(Field("a", Int32sl::create()),
+                              Field("b", Int32sl::create()));
+  field->get_field<Int32sl>("a").lock()->value = 1;
+  field->get_field<Int32sl>("b").lock()->value = 2;
+
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  field->build_xml(root, "test");
+  std::stringstream ss;
+  doc.save(ss);
+
+  auto expected = R"(<?xml version="1.0"?>
+<root>
+	<test a="1" b="2" />
+</root>
+)";
+  REQUIRE(ss.str() == expected);
+}
+
+TEST_CASE("Array XML Building") {
+  auto field = Array::create(2, []() {
+    return Struct::create(Field("a", Int32sl::create()),
+                          Field("b", Int32sl::create()));
+  });
+  field->init_fields();
+  field->get_field<Int32sl>(0, "a").lock()->value = 1;
+  field->get_field<Int32sl>(0, "b").lock()->value = 2;
+  field->get_field<Int32sl>(1, "a").lock()->value = 3;
+  field->get_field<Int32sl>(1, "b").lock()->value = 4;
+
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  field->build_xml(root, "test");
+  std::stringstream ss;
+  doc.save(ss);
+
+  auto expected = R"(<?xml version="1.0"?>
+<root>
+	<test a="1" b="2" />
+	<test a="3" b="4" />
+</root>
+)";
+  REQUIRE(ss.str() == expected);
 }
