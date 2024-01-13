@@ -165,6 +165,18 @@ TEST_CASE("Struct building") {
   REQUIRE(ss.str() == data.str());
 }
 
+TEST_CASE("Struct Reuse Pattern") {
+  auto Header = []() {
+    return Struct::create(Field("offset", Int32ul::create()),
+                          Field("size", Int32ul::create()),
+                          Field("count", Int32ul::create()));
+  };
+
+  auto s =
+      Struct::create(Field("header1", Header()), Field("header2", Header()),
+                     Field("header3", Header()), Field("header4", Header()));
+}
+
 TEST_CASE("Array") {
   auto arr = Array::create(4, []() { return Int32sl::create(); });
   std::stringstream data;
@@ -303,4 +315,31 @@ TEST_CASE("Array XML Building") {
 </root>
 )";
   REQUIRE(ss.str() == expected);
+}
+
+TEST_CASE("Enum") {
+  using EnumField = Enum<int32_t>::Field;
+  auto e = Enum<int32_t>::create(EnumField("off", 0), EnumField("on", 1),
+                                 EnumField("unknown", 2));
+  std::stringstream data;
+  data.write("\x00\x00\x00\x00", 4);
+  data.write("\x00\x00\x00\x01", 4);
+  data.write("\x00\x00\x00\x02", 4);
+  e.parse(data);
+  REQUIRE(e->get<int32_t>() == 0);
+  e.parse(data);
+  REQUIRE(e->get<int32_t>() == 1);
+  e.parse(data);
+  REQUIRE(e->get<int32_t>() == 2);
+
+  std::stringstream ss;
+  e->value = 0;
+  e->build(ss);
+  e->value = 1;
+  e->build(ss);
+  e->value = 2;
+  e->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str() == data.str());
 }

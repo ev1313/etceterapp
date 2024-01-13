@@ -424,4 +424,38 @@ public:
   }
 };
 
+template <typename T> class Enum : public Base {
+protected:
+public:
+  using Base::get;
+  using Base::get_field;
+
+  T value;
+  typedef std::pair<std::string, T> Field;
+  std::map<std::string, T> fields;
+
+  template <typename... Args>
+  Enum(PrivateBase, Args &&...args) : Base(PrivateBase()) {
+    (fields.emplace(std::get<0>(std::forward<Args>(args)),
+                    std::get<1>(std::forward<Args>(args))),
+     ...);
+  }
+  template <typename... Args>
+  static std::shared_ptr<Enum> create(Args &&...args) {
+    auto ret = std::make_shared<Enum>(PrivateBase(), args...);
+
+    for (auto &[key, field] : ret->fields) {
+      field->set_parent(ret);
+    }
+
+    return ret;
+  }
+
+  bool is_simple_type() override { return true; }
+
+  std::any get() override { return value; }
+
+  size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
+};
+
 } // namespace etcetera

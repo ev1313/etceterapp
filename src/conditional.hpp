@@ -146,4 +146,40 @@ public:
 
 using If = IfThenElse;
 
+class Switch : public Base {
+protected:
+  typedef std::function<std::string(std::weak_ptr<Base>)> FSwitchFn;
+  FSwitchFn switch_fn;
+
+public:
+  using Base::get;
+  using Base::get_field;
+
+  Switch(PrivateBase, FSwitchFn switch_fn)
+      : Base(PrivateBase()), switch_fn(switch_fn) {}
+
+  static std::shared_ptr<Switch> create(FSwitchFn switch_fn) {
+    return std::make_shared<Switch>(PrivateBase(), switch_fn);
+  }
+
+  size_t get_size(std::weak_ptr<Base> c) override { return 0; }
+
+  std::any get() override { return std::any(); }
+
+  std::weak_ptr<Base> get_field(std::string key) override {
+    return std::weak_ptr<Base>();
+  }
+
+  std::any parse(std::iostream &stream) override { return std::any(); }
+
+  void build(std::iostream &stream) override {}
+
+  void parse_xml(pugi::xml_node const &node, std::string,
+                 bool is_root) override {}
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    return parent;
+  }
+};
+
 } // namespace etcetera
