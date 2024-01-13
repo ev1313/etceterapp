@@ -36,9 +36,21 @@ public:
   virtual std::any parse(std::iostream &stream) = 0;
   virtual void build(std::iostream &stream) = 0;
 
+  /*
+   * Returns true if the object is a struct
+   * */
   virtual bool is_struct() { return false; }
+  /*
+   * Returns true if the object is an array
+   * */
   virtual bool is_array() { return false; }
+  /*
+   * Returns true if the object is a simple type (i.e. not a struct or array)
+   * */
   virtual bool is_simple_type() { return false; }
+  /*
+   * Returns the size of the object in bytes
+   * */
   virtual size_t get_size(std::weak_ptr<Base> c) = 0;
 
   virtual std::weak_ptr<Base> get_field(std::string) {
@@ -99,7 +111,7 @@ public:
 
   virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
 
-  virtual void parse_xml(pugi::xml_node const &, std::string) {
+  virtual void parse_xml(pugi::xml_node const &, std::string, bool) {
     throw std::runtime_error("Not implemented");
   }
 
@@ -168,10 +180,11 @@ public:
     return fields[key];
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {
-    auto s = node.child(name.c_str());
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
+    auto s = is_root ? node : node.child(name.c_str());
     for (auto &[key, field] : fields) {
-      field->parse_xml(s, key);
+      field->parse_xml(s, key, false);
     }
   }
 
@@ -261,9 +274,16 @@ public:
     }
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {
-    for (auto &obj : data) {
-      obj->parse_xml(node, name);
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
+    auto arr = is_root ? node : node.child(name.c_str());
+    size_t i = 0;
+    for (auto &child_node : arr.children(name.c_str())) {
+      if (i >= data.size()) {
+        throw std::runtime_error("Array: " + name +
+                                 "too many elements in XML found!");
+      }
+      data[i]->parse_xml(child_node, name, true);
     }
   }
 
@@ -300,7 +320,7 @@ public:
     stream.write(reinterpret_cast<char *>(&value), sizeof(T));
   }
 
-  void parse_xml(pugi::xml_node const &, std::string) override {}
+  void parse_xml(pugi::xml_node const &, std::string, bool) override {}
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string) override {
     return parent;
@@ -340,7 +360,7 @@ public:
     stream.write(value.data(), value.length());
   }
 
-  void parse_xml(pugi::xml_node const &, std::string) override {}
+  void parse_xml(pugi::xml_node const &, std::string, bool) override {}
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string) override {
     return parent;
@@ -378,7 +398,7 @@ public:
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {
+  void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     std::string attr = node.attribute(name.c_str()).as_string();
     if (attr.length() != size * 2) {
       throw std::runtime_error("Bytes: expected " + std::to_string(size * 2) +

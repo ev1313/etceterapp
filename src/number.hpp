@@ -52,7 +52,7 @@ public:
 
   size_t get_size(std::weak_ptr<Base>) override { return sizeof(TNumberType); }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {
+  void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     auto s = node.attribute(name.c_str());
     value = s.as_int();
   }

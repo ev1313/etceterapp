@@ -90,7 +90,7 @@ TEST_CASE("Bytes XML") {
   REQUIRE(std::string(root.attribute("test").as_string()) == "000001020304");
   std::stringstream ss;
   auto field2 = Bytes::create(6);
-  field2->parse_xml(root, "test");
+  field2->parse_xml(root, "test", false);
   field2->build(ss);
   ss.seekg(0);
   data.seekg(0);
@@ -240,7 +240,7 @@ TEST_CASE("Struct XML parsing") {
 
   pugi::xml_document doc;
   doc.load_string(xml_str);
-  field->parse_xml(doc.child("root"), "test");
+  field->parse_xml(doc.child("root"), "test", false);
   REQUIRE(field->get<int32_t>("a") == 1);
   REQUIRE(field->get<int32_t>("b") == 2);
 }
@@ -254,7 +254,7 @@ TEST_CASE("Nested Struct XML parsing") {
 
   pugi::xml_document doc;
   doc.load_string(xml_str);
-  field->parse_xml(doc.child("root"), "test");
+  field->parse_xml(doc.child("root"), "test", false);
   REQUIRE(field->get<int32_t>("a") == 1);
   REQUIRE(field->get<int32_t>("b", "c") == 2);
 }

@@ -11,7 +11,8 @@ TEST_CASE("IfThenElse") {
                                     [](std::weak_ptr<Base> c) {
                                       return c.lock()->get<int32_t>("a") == 123;
                                     },
-                                    Int32sl::create(), Int64ul::create())));
+                                    Field("c", Int32sl::create()),
+                                    Field("d", Int64ul::create()))));
 
   int32_t a = 123;
   int32_t b = 456;
@@ -44,14 +45,7 @@ TEST_CASE("If without Else") {
                                     [](std::weak_ptr<Base> c) {
                                       return c.lock()->get<int32_t>("a") == 123;
                                     },
-                                    Int32sl::create())));
-  auto s2 =
-      Struct::create(Field("a", Int32sl::create()),
-                     Field("b", IfThenElse::create(
-                                    [](std::weak_ptr<Base> c) {
-                                      return c.lock()->get<int32_t>("a") == 123;
-                                    },
-                                    nullptr, Int32sl::create())));
+                                    Field("c", Int32sl::create()))));
   int32_t a = 123;
   int32_t b = 456;
 
@@ -70,15 +64,8 @@ TEST_CASE("If without Else") {
   s->parse(orig);
   REQUIRE(s->get<int32_t>("a") == a);
   REQUIRE(orig.peek() == EOF);
-
-  orig.clear();
-  orig.seekg(0);
-  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
-  s2->parse(orig);
-  REQUIRE(s2->get<int32_t>("a") == a);
-  REQUIRE(s2->get<int32_t>("b") == a);
-  REQUIRE(orig.peek() == EOF);
 }
+
 /*
 TEST_CASE("Switch") {
   auto switch = Switch([](Base *c) { return "t1"; },

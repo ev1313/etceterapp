@@ -82,11 +82,12 @@ TEST_CASE("LazyBound") {
   auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
     return Struct::create(
         Field("a", Int32sl::create()), Field("b", Int32sl::create()),
-        Field("c", IfThenElse::create(
-                       [](std::weak_ptr<Base> c) {
-                         return c.lock()->get<int32_t>("a") == 123;
-                       },
-                       LazyBound::create(p.lock()->get_lazy_fn()))));
+        Field("c",
+              IfThenElse::create(
+                  [](std::weak_ptr<Base> c) {
+                    return c.lock()->get<int32_t>("a") == 123;
+                  },
+                  Field("d", LazyBound::create(p.lock()->get_lazy_fn())))));
   });
 
   int32_t a = 123;
@@ -106,4 +107,28 @@ TEST_CASE("LazyBound") {
   REQUIRE(s->get<int32_t>("c", "c", "a") == b);
   REQUIRE(s->get<int32_t>("c", "c", "b") == b);
   REQUIRE(orig.peek() == EOF);
+}
+
+TEST_CASE("LazyBound XML Parsing") {
+  auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
+    return Struct::create(
+        Field("a", Int32sl::create()), Field("b", Int32sl::create()),
+        Field("c",
+              IfThenElse::create(
+                  [](std::weak_ptr<Base> c) {
+                    return c.lock()->get<int32_t>("a") == 123;
+                  },
+                  Field("d", LazyBound::create(p.lock()->get_lazy_fn())))));
+  });
+
+  int32_t a = 123;
+  int32_t b = 456;
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  s->parse(orig);
 }

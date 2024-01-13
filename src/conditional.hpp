@@ -2,109 +2,146 @@
 
 #include "basic.hpp"
 
+#include <optional>
+
 namespace etcetera {
 
 class IfThenElse : public Base {
 protected:
   typedef std::function<bool(std::weak_ptr<Base>)> FIfFn;
   FIfFn if_fn;
-  std::shared_ptr<Base> if_child;
-  std::shared_ptr<Base> else_child;
+  std::optional<Field> if_child;
+  std::optional<Field> else_child;
 
 public:
   using Base::get;
   using Base::get_field;
 
-  IfThenElse(PrivateBase, FIfFn if_fn, std::shared_ptr<Base> if_child,
-             std::shared_ptr<Base> else_child)
+  IfThenElse(PrivateBase, FIfFn if_fn, std::optional<Field> if_child,
+             std::optional<Field> else_child)
       : Base(PrivateBase()), if_fn(if_fn), if_child(if_child),
         else_child(else_child) {}
 
-  static std::shared_ptr<IfThenElse>
-  create(FIfFn if_fn, std::shared_ptr<Base> if_child,
-         std::shared_ptr<Base> else_child = nullptr) {
+  static std::shared_ptr<IfThenElse> create(FIfFn if_fn, Field if_child,
+                                            Field else_child) {
     return std::make_shared<IfThenElse>(PrivateBase(), if_fn, if_child,
                                         else_child);
   }
+  static std::shared_ptr<IfThenElse> create(FIfFn if_fn, Field if_child) {
+    return std::make_shared<IfThenElse>(PrivateBase(), if_fn, if_child,
+                                        std::nullopt);
+  }
 
   size_t get_size(std::weak_ptr<Base> c) override {
+    std::shared_ptr<Base> child;
     if (if_fn(this->parent)) {
       if (!if_child) {
         return 0;
       }
-      return if_child->get_size(c);
+      child = if_child.value().second;
     } else {
       if (!else_child) {
         return 0;
       }
-      return else_child->get_size(c);
+      child = else_child.value().second;
     }
+    return child->get_size(c);
   }
 
   std::any get() override {
+    std::shared_ptr<Base> child;
     if (if_fn(this->parent)) {
       if (!if_child) {
         return std::any();
       }
-      return if_child->get();
+      child = if_child.value().second;
     } else {
       if (!else_child) {
         return std::any();
       }
-      return else_child->get();
+      child = else_child.value().second;
     }
+    return child->get();
   }
 
   std::weak_ptr<Base> get_field(std::string key) override {
+    std::shared_ptr<Base> child;
     if (if_fn(this->parent)) {
-      return if_child->get_field(key);
+      if (!if_child) {
+        return std::weak_ptr<Base>();
+      }
+      child = if_child.value().second;
     } else {
-      return else_child->get_field(key);
+      if (!else_child) {
+        return std::weak_ptr<Base>();
+      }
+      child = else_child.value().second;
     }
+    return child->get_field(key);
   }
 
   std::any parse(std::iostream &stream) override {
+    std::shared_ptr<Base> child;
     if (if_fn(this->parent)) {
       if (!if_child) {
         return std::any();
       }
-      return if_child->parse(stream);
+      child = if_child.value().second;
     } else {
       if (!else_child) {
         return std::any();
       }
-      return else_child->parse(stream);
+      child = else_child.value().second;
     }
+    return child->parse(stream);
   }
 
   void build(std::iostream &stream) override {
     if (if_fn(this->parent)) {
       if (if_child) {
-        if_child->build(stream);
+        if_child.value().second->build(stream);
       }
     } else {
       if (else_child) {
-        else_child->build(stream);
+        else_child.value().second->build(stream);
       }
     }
   }
-  /*
-    void parse_xml(pugi::xml_node const &node, std::string name) override {
-      return child->parse_xml(node, name);
-      if (if_fn(this->parent)) {
-        if (if_child) {
-          if_child->build(stream);
-        }
-      } else {
-        if (else_child) {
-          else_child->build(stream);
+
+  void parse_xml(pugi::xml_node const &node, std::string,
+                 bool is_root) override {
+    std::string child_name;
+    std::shared_ptr<Base> child;
+    if (if_child) {
+      if (node.child(if_child.value().first.c_str())) {
+        std::tie(child_name, child) = if_child.value();
+      }
+    } else {
+      if (else_child) {
+        if (node.child(else_child.value().first.c_str())) {
+          std::tie(child_name, child) = else_child.value();
         }
       }
     }
+    if (!child) {
+      return;
+    }
+    return child->parse_xml(node, child_name, is_root);
+  }
 
-    pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override
-    { return child->build_xml(parent, name);
-    }*/
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    if (!if_fn(this->parent)) {
+      if (!if_child) {
+        return parent;
+      }
+      return if_child.value().second->build_xml(parent, name);
+    } else {
+      if (!else_child) {
+        return parent;
+      }
+      return else_child.value().second->build_xml(parent, name);
+    }
+  }
 };
 
 using If = IfThenElse;

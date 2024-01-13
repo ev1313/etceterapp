@@ -107,3 +107,30 @@ TEST_CASE("Test number sizes") {
   REQUIRE(Float32b::create()->get_size({}) == 4);
   REQUIRE(Float64b::create()->get_size({}) == 8);
 }
+
+TEST_CASE("Int XML parsing") {
+  auto field = Int32sl::create();
+  field->value = 0x0;
+
+  auto xml_str = R"(<root test="123456789"></root>)";
+  pugi::xml_document doc;
+  doc.load_string(xml_str);
+  field->parse_xml(doc.child("root"), "test", false);
+  REQUIRE(field->value == 123456789);
+}
+
+TEST_CASE("Int XML building") {
+  auto field = Int32sl::create();
+  field->value = 123456789;
+
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  field->build_xml(root, "test");
+  std::stringstream ss;
+  doc.save(ss);
+
+  auto expected = R"(<?xml version="1.0"?>
+<root test="123456789" />
+)";
+  REQUIRE(ss.str() == expected);
+}

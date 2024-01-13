@@ -80,10 +80,11 @@ public:
 
   void build(std::iostream &stream) override { child->build(stream); }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
     child->set_parent(weak_from_this());
-    return child->parse_xml(node, name);
+    return child->parse_xml(node, name, is_root);
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {

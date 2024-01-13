@@ -16,7 +16,7 @@ public:
 
   bool is_simple_type() override { return true; }
 
-  void parse_xml(pugi::xml_node const &node, std::string name) override {
+  void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     value = node.attribute(name.c_str()).as_string();
   }
 
