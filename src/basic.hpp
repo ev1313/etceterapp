@@ -424,7 +424,8 @@ public:
   }
 };
 
-template <typename T> class Enum : public Base {
+template <typename T, std::endian Endianess = std::endian::native>
+class Enum : public Base {
 protected:
 public:
   using Base::get;
@@ -442,13 +443,7 @@ public:
   }
   template <typename... Args>
   static std::shared_ptr<Enum> create(Args &&...args) {
-    auto ret = std::make_shared<Enum>(PrivateBase(), args...);
-
-    for (auto &[key, field] : ret->fields) {
-      field->set_parent(ret);
-    }
-
-    return ret;
+    return std::make_shared<Enum>(PrivateBase(), args...);
   }
 
   bool is_simple_type() override { return true; }
@@ -456,6 +451,61 @@ public:
   std::any get() override { return value; }
 
   size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
+
+  std::any parse(std::iostream &stream) override {
+    stream.read(reinterpret_cast<char *>(&value), sizeof(value));
+    if constexpr (Endianess != std::endian::native) {
+      union {
+        T value;
+        char bytes[sizeof(T)];
+      } bswap;
+      bswap.value = value;
+      for (size_t i = 0; i < sizeof(T) / 2; i++) {
+        std::swap(bswap.bytes[i], bswap.bytes[sizeof(T) - i - 1]);
+      }
+      value = bswap.value;
+    }
+    return value;
+  }
+
+  void build(std::iostream &stream) override {
+    auto val = value;
+    if constexpr (Endianess != std::endian::native) {
+      union {
+        T value;
+        char bytes[sizeof(T)];
+      } bswap;
+      bswap.value = value;
+      for (size_t i = 0; i < sizeof(T) / 2; i++) {
+        std::swap(bswap.bytes[i], bswap.bytes[sizeof(T) - i - 1]);
+      }
+      val = bswap.value;
+    }
+    stream.write(reinterpret_cast<char *>(&val), sizeof(val));
+  }
+
+  void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
+    std::string attr = node.attribute(name.c_str()).as_string();
+
+    auto it = fields.find(attr);
+    if (it == fields.end()) {
+      value = static_cast<T>(std::stoi(attr));
+      return;
+    }
+    value = it->second;
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    for (auto &[key, val] : fields) {
+      if (val == value) {
+        parent.append_attribute(name.c_str()).set_value(key.c_str());
+        return parent;
+      }
+    }
+    parent.append_attribute(name.c_str())
+        .set_value(std::to_string(value).c_str());
+    return parent;
+  }
 };
 
 } // namespace etcetera

@@ -319,17 +319,17 @@ TEST_CASE("Array XML Building") {
 
 TEST_CASE("Enum") {
   using EnumField = Enum<int32_t>::Field;
-  auto e = Enum<int32_t>::create(EnumField("off", 0), EnumField("on", 1),
-                                 EnumField("unknown", 2));
+  auto e = Enum<int32_t, std::endian::big>::create(
+      EnumField("off", 0), EnumField("on", 1), EnumField("unknown", 2));
   std::stringstream data;
   data.write("\x00\x00\x00\x00", 4);
   data.write("\x00\x00\x00\x01", 4);
   data.write("\x00\x00\x00\x02", 4);
-  e.parse(data);
+  e->parse(data);
   REQUIRE(e->get<int32_t>() == 0);
-  e.parse(data);
+  e->parse(data);
   REQUIRE(e->get<int32_t>() == 1);
-  e.parse(data);
+  e->parse(data);
   REQUIRE(e->get<int32_t>() == 2);
 
   std::stringstream ss;
@@ -342,4 +342,25 @@ TEST_CASE("Enum") {
   ss.seekg(0);
   data.seekg(0);
   REQUIRE(ss.str() == data.str());
+}
+
+TEST_CASE("Enum XML") {
+  using EnumField = Enum<int32_t>::Field;
+  auto e = Enum<int32_t, std::endian::big>::create(
+      EnumField("off", 0), EnumField("on", 1), EnumField("unknown", 2));
+
+  pugi::xml_document doc;
+  auto root = doc.append_child("root");
+  e->value = 0;
+  e->build_xml(root, "test");
+  REQUIRE(std::string(root.attribute("test").as_string()) == "off");
+  e->value = 1;
+  e->build_xml(root, "test2");
+  REQUIRE(std::string(root.attribute("test2").as_string()) == "on");
+  e->value = 2;
+  e->build_xml(root, "test3");
+  REQUIRE(std::string(root.attribute("test3").as_string()) == "unknown");
+  e->value = 4;
+  e->build_xml(root, "test4");
+  REQUIRE(std::string(root.attribute("test4").as_string()) == "4");
 }
