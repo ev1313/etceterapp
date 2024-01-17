@@ -23,6 +23,7 @@ class Base : public std::enable_shared_from_this<Base> {
 protected:
   std::type_info const &type_ = typeid(Base);
 
+  std::string name;
   std::weak_ptr<Base> parent;
   friend class Struct;
   friend class Array;
@@ -30,6 +31,7 @@ protected:
 
   struct PrivateBase {};
   void set_parent(std::weak_ptr<Base> parent) { this->parent = parent; }
+  void set_name(std::string name) { this->name = name; }
 
 public:
   Base(PrivateBase) {}
@@ -53,6 +55,10 @@ public:
    * */
   virtual size_t get_size(std::weak_ptr<Base> c) = 0;
 
+  /*
+   * Returns the child field itself. Used for modifying the fields in test
+   * cases.
+   * */
   virtual std::weak_ptr<Base> get_field(std::string) {
     throw std::runtime_error("Not implemented");
   };
@@ -107,6 +113,18 @@ public:
   T get_parsed(K key, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
     return field.lock()->get<T>(args...);
+  }
+
+  virtual size_t get_offset() { return 0; }
+  virtual size_t get_offset(std::string) {
+    throw std::runtime_error("Not implemented");
+  };
+  virtual size_t get_offset(size_t) {
+    throw std::runtime_error("Not implemented");
+  }
+  template <typename K, typename... Ts> size_t get_offset(K key, Ts &&...args) {
+    std::weak_ptr<Base> field = get_field(key);
+    return field.lock()->get_offset<T>(args...);
   }
 
   virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
