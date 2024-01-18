@@ -124,7 +124,7 @@ public:
   }
   template <typename K, typename... Ts> size_t get_offset(K key, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
-    return field.lock()->get_offset<T>(args...);
+    return field.lock()->get_offset(args...);
   }
 
   virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
