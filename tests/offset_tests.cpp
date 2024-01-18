@@ -32,6 +32,7 @@ TEST_CASE("Offset Tests Nested Struct") {
 
 TEST_CASE("Offset Tests Array") {
   auto a = Array::create(3, []() { return Int32ul::create(); });
+  a->init_fields();
   REQUIRE(a->get_offset() == 0);
   REQUIRE(a->get_offset(0) == 0);
   REQUIRE(a->get_offset(1) == 4);

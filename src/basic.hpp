@@ -24,6 +24,7 @@ protected:
   std::type_info const &type_ = typeid(Base);
 
   std::string name;
+  size_t idx;
   std::weak_ptr<Base> parent;
   friend class Struct;
   friend class Array;
@@ -32,6 +33,7 @@ protected:
   struct PrivateBase {};
   void set_parent(std::weak_ptr<Base> parent) { this->parent = parent; }
   void set_name(std::string name) { this->name = name; }
+  void set_idx(size_t idx) { this->idx = idx; }
 
 public:
   Base(PrivateBase) {}
@@ -115,16 +117,27 @@ public:
     return field.lock()->get<T>(args...);
   }
 
-  virtual size_t get_offset() { return 0; }
+  virtual size_t get_offset() {
+    if (parent.lock()) {
+      if (parent.lock()->is_array()) {
+        return parent.lock()->get_offset(idx);
+      } else if (parent.lock()->is_struct()) {
+        return parent.lock()->get_offset(name);
+      }
+      throw std::runtime_error("Base: parent is not array or struct!");
+    }
+    return 0;
+  }
   virtual size_t get_offset(std::string) {
     throw std::runtime_error("Not implemented");
   };
   virtual size_t get_offset(size_t) {
     throw std::runtime_error("Not implemented");
   }
-  template <typename K, typename... Ts> size_t get_offset(K key, Ts &&...args) {
+  template <typename K, typename K2, typename... Ts>
+  size_t get_offset(K key, K2 key2, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
-    return field.lock()->get_offset(args...);
+    return field.lock()->get_offset(key2, args...);
   }
 
   virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
@@ -146,6 +159,7 @@ class Struct : public Base {
 public:
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
   template <typename... Args>
   Struct(PrivateBase, Args &&...args) : Base(PrivateBase()) {
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
@@ -158,6 +172,7 @@ public:
 
     for (auto &[key, field] : ret->fields) {
       field->set_parent(ret);
+      field->set_name(key);
     }
 
     return ret;
@@ -179,6 +194,18 @@ public:
   }
 
   bool is_struct() override { return true; }
+
+  size_t get_offset(std::string key) override {
+    size_t ret = get_offset();
+    for (auto &[k, field] : fields) {
+      if (k == key) {
+        return ret;
+      }
+      ret += field->get_size(weak_from_this());
+    }
+    throw std::runtime_error("Struct: " + key + " not found!");
+    return 0;
+  }
 
   size_t get_size(std::weak_ptr<Base>) override {
     size_t size = 0;
@@ -227,6 +254,7 @@ protected:
 public:
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
   Array(PrivateBase, size_t size, FTypeFn m_type_constructor)
       : Base(PrivateBase()), size(size), type_constructor(m_type_constructor) {}
   static std::shared_ptr<Array> create(size_t size,
@@ -240,6 +268,15 @@ public:
   static std::shared_ptr<Array> create(FSizeFn size_fn,
                                        FTypeFn m_type_constructor) {
     return std::make_shared<Array>(PrivateBase(), size_fn, m_type_constructor);
+  }
+
+  size_t get_offset(size_t key) {
+    size_t ret = get_offset();
+    assert(key < data.size());
+    for (size_t i = 0; i < key; i++) {
+      ret += data[i]->get_size(weak_from_this());
+    }
+    return ret;
   }
 
   size_t get_size(std::weak_ptr<Base> c) override {
@@ -258,6 +295,7 @@ public:
     for (size_t i = 0; i < size; i++) {
       auto obj = type_constructor();
       obj->set_parent(weak_from_this());
+      obj->set_idx(i);
       data.push_back(obj);
       data.back()->parse(stream);
     }
@@ -288,6 +326,7 @@ public:
     for (size_t i = 0; i < n; i++) {
       auto obj = type_constructor();
       obj->set_parent(weak_from_this());
+      obj->set_idx(i);
       data.push_back(obj);
     }
   }
@@ -317,6 +356,7 @@ template <typename T> class Const : public Base {
 public:
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
   T value;
   Const(T val, PrivateBase) : Base(PrivateBase()), value(val) {}
   static std::shared_ptr<Const> create(T val) {
@@ -352,6 +392,7 @@ protected:
 public:
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
   BytesConst(std::string val, PrivateBase) : Base(PrivateBase()), value(val) {}
   static std::shared_ptr<BytesConst> create(std::string val) {
     return std::make_shared<BytesConst>(val, PrivateBase());
@@ -392,6 +433,7 @@ protected:
 public:
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
   std::vector<uint8_t> value;
   Bytes(size_t s, PrivateBase) : Base(PrivateBase()), size(s) {
     value.resize(s);
@@ -448,6 +490,7 @@ protected:
 public:
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
 
   T value;
   typedef std::pair<std::string, T> Field;
