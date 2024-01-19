@@ -1,4 +1,5 @@
 #include "conditional.hpp"
+#include "helpers.hpp"
 #include "number.hpp"
 #include "special.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -31,7 +32,7 @@ TEST_CASE("Rebuild dynamic") {
       Struct::create(Field("b", Rebuild::create(
                                     [](std::weak_ptr<Base> c) {
                                       return std::make_any<int32_t>(
-                                          c.lock()->get<int32_t>("a") + 333);
+                                          lock(c)->get<int32_t>("a") + 333);
                                     },
                                     Int32sl::create())),
                      Field("a", Int32sl::create()));
@@ -53,14 +54,14 @@ TEST_CASE("Rebuild nested") {
       Struct::create(Field("a", Rebuild::create(
                                     [](std::weak_ptr<Base> c) {
                                       return std::make_any<int32_t>(
-                                          c.lock()->get<int32_t>("c") + 111);
+                                          lock(c)->get<int32_t>("c") + 111);
                                     },
                                     Int32sl::create())),
                      Field("b", Int32sl::create()),
                      Field("c", Rebuild::create(
                                     [](std::weak_ptr<Base> c) {
                                       return std::make_any<int32_t>(
-                                          c.lock()->get<int32_t>("b") + 111);
+                                          lock(c)->get<int32_t>("b") + 111);
                                     },
                                     Int32sl::create())));
   int32_t b = 123;
@@ -82,12 +83,11 @@ TEST_CASE("LazyBound") {
   auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
     return Struct::create(
         Field("a", Int32sl::create()), Field("b", Int32sl::create()),
-        Field("c",
-              IfThenElse::create(
-                  [](std::weak_ptr<Base> c) {
-                    return c.lock()->get<int32_t>("a") == 123;
-                  },
-                  Field("d", LazyBound::create(p.lock()->get_lazy_fn())))));
+        Field("c", IfThenElse::create(
+                       [](std::weak_ptr<Base> c) {
+                         return lock(c)->get<int32_t>("a") == 123;
+                       },
+                       Field("d", LazyBound::create(lock(p)->get_lazy_fn())))));
   });
 
   int32_t a = 123;
@@ -113,12 +113,11 @@ TEST_CASE("LazyBound XML Parsing") {
   auto s = LazyBound::create([](std::weak_ptr<LazyBound> p) {
     return Struct::create(
         Field("a", Int32sl::create()), Field("b", Int32sl::create()),
-        Field("c",
-              IfThenElse::create(
-                  [](std::weak_ptr<Base> c) {
-                    return c.lock()->get<int32_t>("a") == 123;
-                  },
-                  Field("d", LazyBound::create(p.lock()->get_lazy_fn())))));
+        Field("c", IfThenElse::create(
+                       [](std::weak_ptr<Base> c) {
+                         return lock(c)->get<int32_t>("a") == 123;
+                       },
+                       Field("d", LazyBound::create(lock(p)->get_lazy_fn())))));
   });
 
   int32_t a = 123;
