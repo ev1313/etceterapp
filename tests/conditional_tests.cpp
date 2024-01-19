@@ -72,15 +72,16 @@ TEST_CASE("Switch parse") {
   using SField = Switch<int32_t>::SwitchField;
   auto s = Struct::create(
       Field("a", Int32sl::create()),
-      Field("b", Switch<int32_t>::create(
-                     [](std::weak_ptr<Base> c) {
-                       return lock(c)->get<int32_t>("a");
-                     },
-                     SField(-0x1, "Int32ul", Int32ul::create()),
-                     SField(0x0, "Int32", Int32sl::create()),
-                     SField(0x1, "Int64", Int32ul::create()),
-                     SField(0x2, "Struct",
-                            Struct::create(Field("a", Int32ul::create()))))));
+      Field(
+          "b",
+          Switch<int32_t>::create(
+              [](std::weak_ptr<Base> c) { return lock(c)->get<int32_t>("a"); },
+              SField(-0x1, "Int32ul", []() { return Int32ul::create(); }),
+              SField(0x0, "Int32", []() { return Int32sl::create(); }),
+              SField(0x1, "Int64", []() { return Int32ul::create(); }),
+              SField(0x2, "Struct", []() {
+                return Struct::create(Field("a", Int32ul::create()));
+              }))));
 
   std::stringstream ss;
   int32_t a = 0x0;
@@ -104,15 +105,16 @@ TEST_CASE("Switch build") {
   using SField = Switch<int32_t>::SwitchField;
   auto s = Struct::create(
       Field("a", Int32sl::create()),
-      Field("b", Switch<int32_t>::create(
-                     [](std::weak_ptr<Base> c) {
-                       return lock(c)->get<int32_t>("a");
-                     },
-                     SField(-0x1, "Int32ul", Int32ul::create()),
-                     SField(0x0, "Int32", Int32sl::create()),
-                     SField(0x1, "Int64", Int32ul::create()),
-                     SField(0x2, "Struct",
-                            Struct::create(Field("a", Int32ul::create()))))));
+      Field(
+          "b",
+          Switch<int32_t>::create(
+              [](std::weak_ptr<Base> c) { return lock(c)->get<int32_t>("a"); },
+              SField(-0x1, "Int32ul", []() { return Int32ul::create(); }),
+              SField(0x0, "Int32", []() { return Int32sl::create(); }),
+              SField(0x1, "Int64", []() { return Int32ul::create(); }),
+              SField(0x2, "Struct", []() {
+                return Struct::create(Field("a", Int32ul::create()));
+              }))));
 
   std::stringstream orig;
   int32_t c = 0x2;

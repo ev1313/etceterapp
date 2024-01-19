@@ -149,13 +149,15 @@ using If = IfThenElse;
 template <typename T> class Switch : public Base {
 protected:
   typedef std::function<T(std::weak_ptr<Base>)> FSwitchFn;
+  typedef std::function<std::shared_ptr<Base>()> FTypeFn;
   FSwitchFn switch_fn;
-  std::map<std::string, T> values_by_name;
-  std::map<T, std::shared_ptr<Base>> fields;
+  std::map<T, std::string> names;
+  std::map<T, FTypeFn> fields;
   T value;
+  std::shared_ptr<Base> current;
 
 public:
-  typedef std::tuple<T, std::string, std::shared_ptr<Base>> SwitchField;
+  typedef std::tuple<T, std::string, FTypeFn> SwitchField;
   using Base::get;
   using Base::get_field;
 
@@ -165,44 +167,46 @@ public:
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
                     std::get<2>(std::forward<Args>(args))),
      ...);
-    (values_by_name.emplace(std::get<1>(std::forward<Args>(args)),
-                            std::get<0>(std::forward<Args>(args))),
+    (names.emplace(std::get<0>(std::forward<Args>(args)),
+                   std::get<1>(std::forward<Args>(args))),
      ...);
   }
 
   template <typename... Args>
   static std::shared_ptr<Switch> create(FSwitchFn switch_fn, Args &&...args) {
-    auto ret = std::make_shared<Switch>(PrivateBase(), switch_fn, args...);
-
-    for (auto &[key, field] : ret->fields) {
-      field->set_parent(ret);
-    }
-
-    return ret;
+    return std::make_shared<Switch>(PrivateBase(), switch_fn, args...);
   }
 
   size_t get_size(std::weak_ptr<Base> c) override {
-    return fields[value]->get_size(c);
+    return current->get_size(c);
   }
 
-  std::any get() override { return fields[value]->get(); }
+  std::any get() override { return current->get(); }
 
   std::weak_ptr<Base> get_field(std::string key) override {
-    return fields[value]->get_field(key);
+    return current->get_field(key);
   }
 
   std::any parse(std::iostream &stream) override {
     value = switch_fn(this->parent);
-    return fields[value]->parse(stream);
+    current = fields[value]();
+    return current->parse(stream);
   }
 
-  void build(std::iostream &stream) override { fields[value]->build(stream); }
+  void build(std::iostream &stream) override { current->build(stream); }
 
   void parse_xml(pugi::xml_node const &node, std::string,
-                 bool is_root) override {}
+                 bool is_root) override {
+    for (auto &[key, value] : names) {
+      if (node.child(value.c_str())) {
+        current = fields[key]();
+        return current->parse_xml(node, value, is_root);
+      }
+    }
+  }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
-    return parent;
+    return current->build_xml(parent, name);
   }
 };
 
