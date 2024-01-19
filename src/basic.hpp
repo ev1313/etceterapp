@@ -15,10 +15,6 @@
 
 namespace etcetera {
 
-class Struct;
-class Array;
-class LazyBound;
-
 class Base : public std::enable_shared_from_this<Base> {
 protected:
   std::type_info const &type_ = typeid(Base);
@@ -26,16 +22,14 @@ protected:
   std::string name;
   size_t idx;
   std::weak_ptr<Base> parent;
-  friend class Struct;
-  friend class Array;
-  friend class LazyBound;
 
   struct PrivateBase {};
+
+public:
   void set_parent(std::weak_ptr<Base> parent) { this->parent = parent; }
   void set_name(std::string name) { this->name = name; }
   void set_idx(size_t idx) { this->idx = idx; }
 
-public:
   Base(PrivateBase) {}
   virtual std::any parse(std::iostream &stream) = 0;
   virtual void build(std::iostream &stream) = 0;

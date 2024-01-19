@@ -146,20 +146,39 @@ public:
 
 using If = IfThenElse;
 
-class Switch : public Base {
+template <typename T> class Switch : public Base {
 protected:
-  typedef std::function<std::string(std::weak_ptr<Base>)> FSwitchFn;
+  typedef std::function<T(std::weak_ptr<Base>)> FSwitchFn;
   FSwitchFn switch_fn;
+  std::map<std::string, std::shared_ptr<Base>> fields_by_name;
+  std::map<T, std::shared_ptr<Base>> fields_by_value;
 
 public:
+  typedef std::tuple<T, std::string, std::shared_ptr<Base>> SwitchField;
   using Base::get;
   using Base::get_field;
 
-  Switch(PrivateBase, FSwitchFn switch_fn)
-      : Base(PrivateBase()), switch_fn(switch_fn) {}
+  template <typename... Args>
+  Switch(PrivateBase, FSwitchFn switch_fn, Args &&...args)
+      : Base(PrivateBase()), switch_fn(switch_fn) {
+    (fields_by_value.emplace(std::get<0>(std::forward<Args>(args)),
+                             std::get<2>(std::forward<Args>(args))),
+     ...);
+    (fields_by_name.emplace(std::get<1>(std::forward<Args>(args)),
+                            std::get<2>(std::forward<Args>(args))),
+     ...);
+  }
 
-  static std::shared_ptr<Switch> create(FSwitchFn switch_fn) {
-    return std::make_shared<Switch>(PrivateBase(), switch_fn);
+  template <typename... Args>
+  static std::shared_ptr<Switch> create(FSwitchFn switch_fn, Args &&...args) {
+    auto ret = std::make_shared<Switch>(PrivateBase(), switch_fn);
+
+    for (auto &[key, field] : ret->fields_by_name) {
+      field->set_parent(ret);
+      field->set_name(key);
+    }
+
+    return ret;
   }
 
   size_t get_size(std::weak_ptr<Base> c) override { return 0; }

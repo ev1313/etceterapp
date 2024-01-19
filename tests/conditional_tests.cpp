@@ -66,10 +66,16 @@ TEST_CASE("If without Else") {
   REQUIRE(orig.peek() == EOF);
 }
 
-/*
 TEST_CASE("Switch") {
-  auto switch = Switch([](Base *c) { return "t1"; },
-                            SwitchField("t1", new Int32sl()),
-                            SwitchField("t2", new Int64ul()));
+  using SField = Switch<int32_t>::SwitchField;
+  auto s = Struct::create(
+      Field("a", Int32ul::create()),
+      Field("b", Switch<int32_t>::create(
+                     [](std::weak_ptr<Base> c) {
+                       return c.lock()->get<int32_t>("a");
+                     },
+                     SField(0x0, "Int32", Int32ul::create()),
+                     SField(0x1, "Int64", Int32ul::create()),
+                     SField(0x2, "Struct",
+                            Struct::create(Field("a", Int32ul::create()))))));
 }
-*/
