@@ -38,3 +38,25 @@ TEST_CASE("Offset Tests Array") {
   REQUIRE(a->get_offset(1) == 4);
   REQUIRE(a->get_offset(2) == 8);
 }
+
+TEST_CASE("Offset Tests Nested Array") {
+  auto a = Array::create(
+      3, []() { return Array::create(2, []() { return Int32ul::create(); }); });
+
+  int32_t data[6] = {0, 1, 2, 3, 4, 5};
+  std::stringstream ss;
+  ss.write(reinterpret_cast<char *>(data), sizeof(data));
+
+  a->parse(ss);
+
+  REQUIRE(a->get_offset() == 0);
+  REQUIRE(a->get_offset(0) == 0);
+  REQUIRE(a->get_offset(1) == 8);
+  REQUIRE(a->get_offset(2) == 16);
+  REQUIRE(a->get_offset(0, 0) == 0);
+  REQUIRE(a->get_offset(0, 1) == 4);
+  REQUIRE(a->get_offset(1, 0) == 8);
+  REQUIRE(a->get_offset(1, 1) == 12);
+  REQUIRE(a->get_offset(2, 0) == 16);
+  REQUIRE(a->get_offset(2, 1) == 20);
+}
