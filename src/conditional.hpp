@@ -150,8 +150,9 @@ template <typename T> class Switch : public Base {
 protected:
   typedef std::function<T(std::weak_ptr<Base>)> FSwitchFn;
   FSwitchFn switch_fn;
-  std::map<std::string, std::shared_ptr<Base>> fields_by_name;
-  std::map<T, std::shared_ptr<Base>> fields_by_value;
+  std::map<std::string, T> values_by_name;
+  std::map<T, std::shared_ptr<Base>> fields;
+  T value;
 
 public:
   typedef std::tuple<T, std::string, std::shared_ptr<Base>> SwitchField;
@@ -161,37 +162,41 @@ public:
   template <typename... Args>
   Switch(PrivateBase, FSwitchFn switch_fn, Args &&...args)
       : Base(PrivateBase()), switch_fn(switch_fn) {
-    (fields_by_value.emplace(std::get<0>(std::forward<Args>(args)),
-                             std::get<2>(std::forward<Args>(args))),
+    (fields.emplace(std::get<0>(std::forward<Args>(args)),
+                    std::get<2>(std::forward<Args>(args))),
      ...);
-    (fields_by_name.emplace(std::get<1>(std::forward<Args>(args)),
-                            std::get<2>(std::forward<Args>(args))),
+    (values_by_name.emplace(std::get<1>(std::forward<Args>(args)),
+                            std::get<0>(std::forward<Args>(args))),
      ...);
   }
 
   template <typename... Args>
   static std::shared_ptr<Switch> create(FSwitchFn switch_fn, Args &&...args) {
-    auto ret = std::make_shared<Switch>(PrivateBase(), switch_fn);
+    auto ret = std::make_shared<Switch>(PrivateBase(), switch_fn, args...);
 
-    for (auto &[key, field] : ret->fields_by_name) {
+    for (auto &[key, field] : ret->fields) {
       field->set_parent(ret);
-      field->set_name(key);
     }
 
     return ret;
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override { return 0; }
-
-  std::any get() override { return std::any(); }
-
-  std::weak_ptr<Base> get_field(std::string key) override {
-    return std::weak_ptr<Base>();
+  size_t get_size(std::weak_ptr<Base> c) override {
+    return fields[value]->get_size(c);
   }
 
-  std::any parse(std::iostream &stream) override { return std::any(); }
+  std::any get() override { return fields[value]->get(); }
 
-  void build(std::iostream &stream) override {}
+  std::weak_ptr<Base> get_field(std::string key) override {
+    return fields[value]->get_field(key);
+  }
+
+  std::any parse(std::iostream &stream) override {
+    value = switch_fn(this->parent);
+    return fields[value]->parse(stream);
+  }
+
+  void build(std::iostream &stream) override { fields[value]->build(stream); }
 
   void parse_xml(pugi::xml_node const &node, std::string,
                  bool is_root) override {}
