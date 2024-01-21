@@ -120,14 +120,16 @@ TEST_CASE("LazyBound XML Parsing") {
                        Field("d", LazyBound::create(lock(p)->get_lazy_fn())))));
   });
 
-  int32_t a = 123;
-  int32_t b = 456;
-  std::stringstream orig;
-  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
-  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
-  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  orig.write(reinterpret_cast<const char *>(&b), sizeof(b));
-  s->parse(orig);
+  auto xml_str =
+      R"(<root a="123" b="2"><d a="123" b="3"><d a="0" b="4"/></d></root>)";
+  pugi::xml_document doc;
+  doc.load_string(xml_str);
+
+  s->parse_xml(doc.child("root"), "root", true);
+  REQUIRE(s->get<int32_t>("a") == 123);
+  REQUIRE(s->get<int32_t>("b") == 2);
+  REQUIRE(s->get<int32_t>("c", "a") == 123);
+  REQUIRE(s->get<int32_t>("c", "b") == 3);
+  REQUIRE(s->get<int32_t>("c", "c", "a") == 0);
+  REQUIRE(s->get<int32_t>("c", "c", "b") == 4);
 }
