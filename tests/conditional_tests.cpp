@@ -126,3 +126,35 @@ TEST_CASE("Switch build") {
   s->build(ss);
   REQUIRE(ss.str() == orig.str());
 }
+
+TEST_CASE("Switch XML parse") {
+  using SField = Switch<int32_t>::SwitchField;
+  auto s = Struct::create(
+      Field("a", Int32sl::create()),
+      Field(
+          "b",
+          Switch<int32_t>::create(
+              [](std::weak_ptr<Base> c) { return lock(c)->get<int32_t>("a"); },
+              SField(-0x1, "Int32ul", []() { return Int32ul::create(); }),
+              SField(0x0, "Int32", []() { return Int32sl::create(); }),
+              SField(0x1, "Int64", []() { return Int32ul::create(); }),
+              SField(0x2, "Struct", []() {
+                return Struct::create(Field("a", Int32ul::create()));
+              }))));
+
+  // simple type
+  auto xml_simple = R"(<root a="0" Int32="1" />)";
+  pugi::xml_document doc;
+  doc.load_string(xml_simple);
+
+  s->parse_xml(doc.child("root"), "root", true);
+  REQUIRE(s->get<int32_t>("a") == 0);
+  REQUIRE(s->get<int32_t>("b") == 1);
+
+  auto xml_struct = R"(<root a="2"><Struct a="33" /></root>)";
+  doc.load_string(xml_struct);
+
+  s->parse_xml(doc.child("root"), "root", true);
+  REQUIRE(s->get<int32_t>("a") == 2);
+  REQUIRE(s->get<uint32_t>("b", "a") == 33);
+}

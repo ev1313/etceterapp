@@ -198,11 +198,19 @@ public:
   void parse_xml(pugi::xml_node const &node, std::string,
                  bool is_root) override {
     for (auto &[key, value] : names) {
-      if (node.child(value.c_str())) {
-        current = fields[key]();
+      current = fields[key]();
+      bool valid = false;
+      if (current->is_simple_type()) {
+        valid = node.attribute(value.c_str());
+      } else {
+        valid = node.child(value.c_str());
+      }
+      if (valid) {
         return current->parse_xml(node, value, is_root);
       }
     }
+    current = {};
+    throw std::runtime_error("No matching child");
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
