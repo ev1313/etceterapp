@@ -87,7 +87,7 @@ TEST_CASE("Switch parse") {
   int32_t a = 0x0;
   int32_t b = 0x12345678;
   int32_t c = 0x2;
-  int32_t d = 0x87654321;
+  uint32_t d = 0x87654321;
   ss.write(reinterpret_cast<const char *>(&a), sizeof(a));
   ss.write(reinterpret_cast<const char *>(&b), sizeof(b));
   ss.write(reinterpret_cast<const char *>(&c), sizeof(c));

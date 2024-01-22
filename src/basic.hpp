@@ -47,9 +47,22 @@ public:
    * */
   virtual bool is_simple_type() { return false; }
   /*
+   * Returns true, if the object is a pointer type.
+   *
+   * If true get_ptr_offset and get_ptr_size need to be implemented.
+   * */
+  virtual bool is_pointer_type() { return false; }
+
+  /*
    * Returns the size of the object in bytes
    * */
   virtual size_t get_size(std::weak_ptr<Base> c) = 0;
+  virtual size_t get_ptr_offset(std::weak_ptr<Base>) {
+    throw std::runtime_error("Not implemented");
+  }
+  virtual size_t get_ptr_size(std::weak_ptr<Base>) {
+    throw std::runtime_error("Not implemented");
+  }
 
   /*
    * Returns the child field itself. Used for modifying the fields in test

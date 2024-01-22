@@ -43,6 +43,7 @@ add_executable(tests
   tests/special_tests.cpp
   tests/string_tests.cpp
   tests/offset_tests.cpp
+  tests/pointer_tests.cpp
   )
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain etceterapp)
 
