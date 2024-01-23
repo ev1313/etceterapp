@@ -29,9 +29,11 @@ public:
 
   size_t get_size(std::weak_ptr<Base>) override { return 0; }
 
-  size_t get_ptr_offset(std::weak_ptr<Base> c) override { return offset_fn(c); }
-  size_t get_ptr_size(std::weak_ptr<Base> c) override {
-    return sub->get_size(c);
+  size_t get_ptr_offset(std::weak_ptr<Base>) override {
+    return offset_fn(this->parent);
+  }
+  size_t get_ptr_size(std::weak_ptr<Base>) override {
+    return sub->get_size(this->parent);
   }
 
   std::any get() override { return sub->get(); }
@@ -51,6 +53,17 @@ public:
     s.seekp(old_offset + offset);
     sub->build(s);
     s.seekp(old_offset);
+  }
+
+  void set(std::any value) override { sub->set(value); }
+
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
+    sub->parse_xml(node, name, is_root);
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    return sub->build_xml(parent, name);
   }
 };
 

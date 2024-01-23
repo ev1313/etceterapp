@@ -25,6 +25,8 @@ TEST_CASE("Pointer parse test") {
   REQUIRE(s->get<uint32_t>("a") == a);
   REQUIRE(s->get<uint32_t>("b") == b);
   REQUIRE(orig.tellg() == 4);
+  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_offset({}) == 10);
+  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_size({}) == 4);
 }
 
 TEST_CASE("Pointer build test") {
@@ -58,8 +60,8 @@ TEST_CASE("Pointer build test") {
   s->build(ss);
   ss.seekg(0, std::ios::beg);
   orig.seekg(0, std::ios::beg);
-  for (int i = 0; i < 5; i++) {
-    REQUIRE(ss.get() == orig.get());
-  }
   REQUIRE(ss.str() == orig.str());
+
+  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_offset({}) == 12);
+  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_size({}) == 4);
 }

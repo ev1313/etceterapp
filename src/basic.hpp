@@ -229,6 +229,7 @@ public:
     if (key == "_") {
       return this->parent;
     }
+
     return fields[key];
   }
 
