@@ -157,7 +157,7 @@ public:
       sub->build(stream);
     }
 
-    int64_t test_pos = old_offset + offset + get_size(this->parent);
+    int64_t test_pos = old_offset + offset + get_ptr_size(this->parent);
 
     assert(stream.tellp() == test_pos);
 

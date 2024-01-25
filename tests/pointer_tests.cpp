@@ -94,3 +94,33 @@ TEST_CASE("Area parse test") {
   REQUIRE(lock(s->get_field<Area>("b"))->get_ptr_offset({}) == off);
   REQUIRE(lock(s->get_field<Area>("b"))->get_ptr_size({}) == size);
 }
+
+TEST_CASE("Area build test") {
+  auto s = Struct::create(
+      Field("off", Int32ul::create()), Field("size", Int32ul::create()),
+      Field("b", Area::create(
+                     [](std::weak_ptr<Base> c) {
+                       return lock(c)->get<uint32_t>("off");
+                     },
+                     [](std::weak_ptr<Base> c) {
+                       return lock(c)->get<uint32_t>("size");
+                     },
+                     []() { return Int32ul::create(); })));
+  uint32_t off = 10;
+  uint32_t size = 40;
+  char pad[10] = {0};
+  uint32_t data[10] = {456, 789, 123, 456, 789, 123, 456, 789, 123, 456};
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&off), sizeof(off));
+  orig.write(reinterpret_cast<const char *>(&size), sizeof(size));
+  orig.write(pad, sizeof(pad));
+  orig.write(reinterpret_cast<const char *>(&data), sizeof(data));
+
+  s->parse(orig);
+  std::stringstream ss(
+      std::string(s->get_size({}) + sizeof(data) + sizeof(pad), '\0'));
+  s->build(ss);
+  ss.seekg(0, std::ios::beg);
+  orig.seekg(0, std::ios::beg);
+  REQUIRE(ss.str() == orig.str());
+}
