@@ -13,7 +13,7 @@ TEST_CASE("Pointer parse test") {
                                            return lock(c)->get<uint32_t>("a");
                                          },
                                          Int32ul::create())));
-  uint32_t a = 10;
+  uint32_t a = 14;
   char pad[10] = {0};
   uint32_t b = 456;
   std::stringstream orig;
@@ -25,7 +25,7 @@ TEST_CASE("Pointer parse test") {
   REQUIRE(s->get<uint32_t>("a") == a);
   REQUIRE(s->get<uint32_t>("b") == b);
   REQUIRE(orig.tellg() == 4);
-  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_offset({}) == 10);
+  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_offset({}) == 14);
   REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_size({}) == 4);
 }
 
@@ -39,7 +39,7 @@ TEST_CASE("Pointer build test") {
                           Field("c", Int32ul::create()),
                           Field("d", Int32ul::create()),
                           Field("e", Int32ul::create()));
-  uint32_t a = 12;
+  uint32_t a = 16;
   uint32_t b = 456;
   std::stringstream orig;
   orig.write(reinterpret_cast<const char *>(&a), sizeof(a));
@@ -62,7 +62,7 @@ TEST_CASE("Pointer build test") {
   orig.seekg(0, std::ios::beg);
   REQUIRE(ss.str() == orig.str());
 
-  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_offset({}) == 12);
+  REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_offset({}) == 16);
   REQUIRE(lock(s->get_field<Pointer>("b"))->get_ptr_size({}) == 4);
 }
 
@@ -77,7 +77,7 @@ TEST_CASE("Area parse test") {
                        return lock(c)->get<uint32_t>("size");
                      },
                      []() { return Int32ul::create(); })));
-  uint32_t off = 10;
+  uint32_t off = 18;
   uint32_t size = 40;
   char pad[10] = {0};
   uint32_t data[10] = {456, 789, 123, 456, 789, 123, 456, 789, 123, 456};
@@ -106,7 +106,7 @@ TEST_CASE("Area build test") {
                        return lock(c)->get<uint32_t>("size");
                      },
                      []() { return Int32ul::create(); })));
-  uint32_t off = 10;
+  uint32_t off = 18;
   uint32_t size = 40;
   char pad[10] = {0};
   uint32_t data[10] = {456, 789, 123, 456, 789, 123, 456, 789, 123, 456};

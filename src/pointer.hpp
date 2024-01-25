@@ -45,7 +45,7 @@ public:
   std::any parse(std::istream &s) override {
     offset = offset_fn(this->parent);
     size_t old_offset = s.tellg();
-    s.seekg(old_offset + offset);
+    s.seekg(offset);
     auto ret = sub->parse(s);
     s.seekg(old_offset);
     return ret;
@@ -54,7 +54,7 @@ public:
   void build(std::ostream &s) override {
     offset = offset_fn(this->parent);
     size_t old_offset = s.tellp();
-    s.seekp(old_offset + offset);
+    s.seekp(offset);
     sub->build(s);
     s.seekp(old_offset);
   }
@@ -133,15 +133,17 @@ public:
     data.clear();
 
     size_t old_offset = stream.tellg();
-    stream.seekg(old_offset + offset);
+    stream.seekg(offset);
 
-    int64_t end_pos = old_offset + offset + size;
-    while (stream.tellg() < end_pos) {
+    int64_t end_pos = offset + size;
+    while (stream.tellg() < end_pos && stream.tellg() >= 0) {
       auto sub = type_fn();
       sub->set_parent(this->shared_from_this());
       sub->parse(stream);
       data.push_back(sub);
     }
+
+    assert(stream.tellg() == end_pos);
 
     stream.seekg(old_offset);
 
@@ -151,13 +153,13 @@ public:
   void build(std::ostream &stream) override {
     auto offset = offset_fn(this->parent);
     size_t old_offset = stream.tellp();
-    stream.seekp(old_offset + offset);
+    stream.seekp(offset);
 
     for (auto &sub : data) {
       sub->build(stream);
     }
 
-    int64_t test_pos = old_offset + offset + get_ptr_size(this->parent);
+    int64_t test_pos = offset + get_ptr_size(this->parent);
 
     assert(stream.tellp() == test_pos);
 

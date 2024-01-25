@@ -25,6 +25,35 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+  auto OBJETable = Struct::create(
+      Field("magic", BytesConst::create("OBJE"s)),
+      Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("offset", Rebuild::create(
+                          [](std::weak_ptr<Base> c) {
+                            return std::make_any<uint32_t>(
+                                lock(c)->get<uint32_t>("_", "headerSize"));
+                          },
+                          Int32ul::create())),
+      Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("size", Int32ul::create()),
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s))
+      // Field("objects", Area("Object" / NDFObject,
+      // offset=this.offset, size=this.size),
+  );
+
+  auto TOC0Header = Struct::create(
+      Field("magic", BytesConst::create("TOC0"s)),
+      Field("tableCount", Const<uint32_t>::create(9)), Field("OBJE", OBJETable)
+      // Field("TOPO", TOPOTable),
+      // Field("CHNK", CHNKTable),
+      // Field("CLAS", CLASTable),
+      // Field("PROP", PROPTable),
+      // Field("STRG", STRGTable),
+      // Field("TRAN", TRANTable),
+      // Field("IMPR", IMPRTable),
+      // Field("EXPR", EXPRTable)
+  );
+
   auto NdfBin = Struct::create(
       Field("magic", BytesConst::create("EUG0"s)),
       Field("magic2", BytesConst::create("\x00\x00\x00\x00"s)),
@@ -43,9 +72,12 @@ int main(int argc, char **argv) {
       Field("unk2", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("size", Int32ul::create()),
       Field("unk4", BytesConst::create("\x00\x00\x00\x00"s)),
-      Field("uncompressedSize", Int32ul::create())
-      //  Field("toc0header", )
-  );
+      Field("uncompressedSize", Int32ul::create()),
+      Field("toc0header", Pointer::create(
+                              [](std::weak_ptr<Base> c) {
+                                return lock(c)->get<uint32_t>("toc0offset");
+                              },
+                              TOC0Header)));
 
   std::ifstream input;
   input.open(program.get("input"), std::ios::binary);
@@ -55,5 +87,6 @@ int main(int argc, char **argv) {
   spdlog::info("toc0offset: {}", NdfBin->get<uint32_t>("toc0offset"));
   spdlog::info("headerSize: {}", NdfBin->get<uint32_t>("headerSize"));
   spdlog::info("size: {}", NdfBin->get<uint32_t>("size"));
-  spdlog::info("uncompressedSize: {}", NdfBin->get<uint32_t>("uncompressedSize"));
+  spdlog::info("uncompressedSize: {}",
+               NdfBin->get<uint32_t>("uncompressedSize"));
 }
