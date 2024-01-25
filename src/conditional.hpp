@@ -80,7 +80,7 @@ public:
     return child->get_field(key);
   }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     std::shared_ptr<Base> child;
     if (if_fn(this->parent)) {
       if (!if_child) {
@@ -96,7 +96,7 @@ public:
     return child->parse(stream);
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     if (if_fn(this->parent)) {
       if (if_child) {
         if_child.value().second->build(stream);
@@ -187,13 +187,13 @@ public:
     return current->get_field(key);
   }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     value = switch_fn(this->parent);
     current = fields[value]();
     return current->parse(stream);
   }
 
-  void build(std::iostream &stream) override { current->build(stream); }
+  void build(std::ostream &stream) override { current->build(stream); }
 
   void parse_xml(pugi::xml_node const &node, std::string,
                  bool is_root) override {

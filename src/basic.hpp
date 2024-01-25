@@ -31,8 +31,8 @@ public:
   void set_idx(size_t idx) { this->idx = idx; }
 
   Base(PrivateBase) {}
-  virtual std::any parse(std::iostream &stream) = 0;
-  virtual void build(std::iostream &stream) = 0;
+  virtual std::any parse(std::istream &stream) = 0;
+  virtual void build(std::ostream &stream) = 0;
 
   /*
    * Returns true if the object is a struct
@@ -185,7 +185,7 @@ public:
     return ret;
   }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     tsl::ordered_map<std::string, std::any> obj;
     for (auto &[key, field] : fields) {
       std::any value = field->parse(stream);
@@ -194,7 +194,7 @@ public:
     return obj;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     for (auto &[key, field] : fields) {
       field->build(stream);
     }
@@ -297,7 +297,7 @@ public:
     return s;
   }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     if (size_fn) {
       size = size_fn(weak_from_this());
     }
@@ -312,7 +312,7 @@ public:
     return data;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     for (auto &obj : data) {
       obj->build(stream);
     }
@@ -379,12 +379,12 @@ public:
 
   size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(T));
     return value;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     stream.write(reinterpret_cast<char *>(&value), sizeof(T));
   }
 
@@ -414,7 +414,7 @@ public:
 
   size_t get_size(std::weak_ptr<Base>) override { return value.length(); }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     std::string tmp;
     tmp.resize(value.length());
     stream.read(reinterpret_cast<char *>(&value), tmp.length());
@@ -425,7 +425,7 @@ public:
     return value;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     stream.write(value.data(), value.length());
   }
 
@@ -458,13 +458,13 @@ public:
 
   size_t get_size(std::weak_ptr<Base>) override { return size; }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     value.resize(size);
     stream.read(reinterpret_cast<char *>(value.data()), value.size());
     return value;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
   }
 
@@ -523,7 +523,7 @@ public:
 
   size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(value));
     if constexpr (Endianess != std::endian::native) {
       union {
@@ -539,7 +539,7 @@ public:
     return value;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     auto val = value;
     if constexpr (Endianess != std::endian::native) {
       union {

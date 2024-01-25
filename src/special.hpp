@@ -31,11 +31,9 @@ public:
 
   size_t get_size(std::weak_ptr<Base> c) override { return child->get_size(c); }
 
-  std::any parse(std::iostream &stream) override {
-    return child->parse(stream);
-  }
+  std::any parse(std::istream &stream) override { return child->parse(stream); }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     auto data = this->get();
     child->set(data);
     child->build(stream);
@@ -72,13 +70,13 @@ public:
 
   FLazyFn get_lazy_fn() { return lazy_fn; }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
     child->set_parent(weak_from_this());
     return child->parse(stream);
   }
 
-  void build(std::iostream &stream) override { child->build(stream); }
+  void build(std::ostream &stream) override { child->build(stream); }
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
@@ -135,7 +133,7 @@ public:
     return child->get_field(key);
   };
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     if (alignment_fn) {
       alignment = alignment_fn.value()(this->parent);
     }
@@ -153,7 +151,7 @@ public:
     return ret;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     if (alignment_fn) {
       alignment = alignment_fn.value()(this->parent);
     }

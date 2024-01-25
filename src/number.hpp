@@ -14,7 +14,7 @@ public:
   static std::shared_ptr<NumberType> create() {
     return std::make_shared<NumberType>(PrivateBase());
   }
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(value));
     if constexpr (Endianess != std::endian::native) {
       union {
@@ -29,7 +29,7 @@ public:
     }
     return value;
   }
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     auto val = value;
     if constexpr (Endianess != std::endian::native) {
       union {

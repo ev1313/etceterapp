@@ -42,7 +42,7 @@ public:
 
   std::any get() override { return sub->get(); }
 
-  std::any parse(std::iostream &s) override {
+  std::any parse(std::istream &s) override {
     offset = offset_fn(this->parent);
     size_t old_offset = s.tellg();
     s.seekg(old_offset + offset);
@@ -51,7 +51,7 @@ public:
     return ret;
   }
 
-  void build(std::iostream &s) override {
+  void build(std::ostream &s) override {
     offset = offset_fn(this->parent);
     size_t old_offset = s.tellp();
     s.seekp(old_offset + offset);
@@ -126,7 +126,7 @@ public:
     return size;
   }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     auto offset = offset_fn(this->parent);
     auto size = size_fn(this->parent);
 
@@ -148,7 +148,7 @@ public:
     return data;
   }
 
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     auto offset = offset_fn(this->parent);
     size_t old_offset = stream.tellp();
     stream.seekp(old_offset + offset);

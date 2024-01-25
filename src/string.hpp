@@ -50,7 +50,7 @@ public:
     return s.length() * sizeof(typename TStringType::value_type);
   }
 
-  std::any parse(std::iostream &stream) override {
+  std::any parse(std::istream &stream) override {
     union {
       typename TStringType::value_type c;
       char bytes[sizeof(typename TStringType::value_type)];
@@ -73,7 +73,7 @@ public:
     }
     return this->value;
   }
-  void build(std::iostream &stream) override {
+  void build(std::ostream &stream) override {
     TStringType s;
     if constexpr (std::is_same<std::u16string, TStringType>()) {
       // FIXME: this is a hack
