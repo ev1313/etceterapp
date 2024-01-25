@@ -404,7 +404,7 @@ public:
   using Base::get_field;
   using Base::get_offset;
   BytesConst(std::string val, PrivateBase) : Base(PrivateBase()), value(val) {}
-  static std::shared_ptr<BytesConst> create(std::string val) {
+  static std::shared_ptr<BytesConst> create(const std::string& val) {
     return std::make_shared<BytesConst>(val, PrivateBase());
   }
 
@@ -417,9 +417,9 @@ public:
   std::any parse(std::istream &stream) override {
     std::string tmp;
     tmp.resize(value.length());
-    stream.read(reinterpret_cast<char *>(&value), tmp.length());
+    stream.read(reinterpret_cast<char *>(tmp.data()), tmp.length());
     if (tmp != value) {
-      throw std::runtime_error("BytesConst: expected " + value + ", got " +
+      throw std::runtime_error("BytesConst @" + std::to_string(stream.tellg()) + ": expected " + value + ", got " +
                                tmp);
     }
     return value;
