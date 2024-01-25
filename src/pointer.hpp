@@ -163,6 +163,26 @@ public:
 
     stream.seekp(old_offset);
   }
+
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
+    auto arr = is_root ? node : node.child(name.c_str());
+    size_t i = 0;
+    for (auto &child_node : arr.children(name.c_str())) {
+      if (i >= data.size()) {
+        throw std::runtime_error("Array: " + name +
+                                 "too many elements in XML found!");
+      }
+      data[i]->parse_xml(child_node, name, true);
+    }
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    for (auto &obj : data) {
+      obj->build_xml(parent, name);
+    }
+    return parent;
+  }
 };
 
 } // namespace etcetera
