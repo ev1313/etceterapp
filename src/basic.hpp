@@ -7,8 +7,8 @@
 #include <cassert>
 #include <functional>
 #include <istream>
-#include <map>
 #include <memory>
+#include <tsl/ordered_map.h>
 
 #include <pugixml.hpp>
 #include <spdlog/spdlog.h>
@@ -161,7 +161,7 @@ public:
 typedef std::pair<std::string, std::shared_ptr<Base>> Field;
 
 class Struct : public Base {
-  std::map<std::string, std::shared_ptr<Base>> fields;
+  tsl::ordered_map<std::string, std::shared_ptr<Base>> fields;
 
 public:
   using Base::get;
@@ -186,7 +186,7 @@ public:
   }
 
   std::any parse(std::iostream &stream) override {
-    std::map<std::string, std::any> obj;
+    tsl::ordered_map<std::string, std::any> obj;
     for (auto &[key, field] : fields) {
       std::any value = field->parse(stream);
       obj.emplace(key, value);
@@ -252,6 +252,8 @@ public:
 
 class Array : public Base {
 protected:
+  // TODO: this should probably not be necessary, as you can just take the size
+  // of data?
   size_t size;
   typedef std::function<size_t(std::weak_ptr<Base>)> FSizeFn;
   typedef std::function<std::shared_ptr<Base>()> FTypeFn;
@@ -502,7 +504,7 @@ public:
 
   T value;
   typedef std::pair<std::string, T> Field;
-  std::map<std::string, T> fields;
+  tsl::ordered_map<std::string, T> fields;
 
   template <typename... Args>
   Enum(PrivateBase, Args &&...args) : Base(PrivateBase()) {

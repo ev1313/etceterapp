@@ -16,6 +16,8 @@ find_package(fmt REQUIRED)
 find_package(Catch2 REQUIRED)
 find_package(pugixml REQUIRED)
 
+add_subdirectory(deps/ordered-map)
+
 # add version information
 find_package(Git)
 if (GIT_FOUND)
@@ -33,7 +35,7 @@ endif ()
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/version.h)
 
 add_library(etceterapp INTERFACE)
-target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml)
+target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml tsl::ordered_map)
 target_include_directories(etceterapp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_executable(tests

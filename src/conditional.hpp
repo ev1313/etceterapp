@@ -151,8 +151,8 @@ protected:
   typedef std::function<T(std::weak_ptr<Base>)> FSwitchFn;
   typedef std::function<std::shared_ptr<Base>()> FTypeFn;
   FSwitchFn switch_fn;
-  std::map<T, std::string> names;
-  std::map<T, FTypeFn> fields;
+  tsl::ordered_map<T, std::string> names;
+  tsl::ordered_map<T, FTypeFn> fields;
   T value;
   std::shared_ptr<Base> current;
 

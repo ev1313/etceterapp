@@ -99,16 +99,16 @@ TEST_CASE("Bytes XML") {
 }
 
 TEST_CASE("Structs parsing") {
-  auto s = Struct::create(Field("a", Int32sl::create()),
-                          Field("b", Int32sl::create()));
+  auto s = Struct::create(Field("b", Int32sl::create()),
+                          Field("a", Int32sl::create()));
   std::stringstream data;
-  int32_t a = 0x12345678;
   int32_t b = 0x87654321;
-  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
+  int32_t a = 0x12345678;
   data.write(reinterpret_cast<const char *>(&b), sizeof(b));
+  data.write(reinterpret_cast<const char *>(&a), sizeof(a));
 
-  std::map<std::string, std::any> obj =
-      std::any_cast<std::map<std::string, std::any>>(s->parse(data));
+  tsl::ordered_map<std::string, std::any> obj =
+      std::any_cast<tsl::ordered_map<std::string, std::any>>(s->parse(data));
   REQUIRE(std::any_cast<int32_t>(obj["a"]) == a);
   REQUIRE(std::any_cast<int32_t>(obj["b"]) == b);
 
@@ -134,8 +134,8 @@ TEST_CASE("nested Structs") {
   data.write(reinterpret_cast<const char *>(&d), sizeof(d));
   data.write(reinterpret_cast<const char *>(&e), sizeof(e));
 
-  std::map<std::string, std::any> obj =
-      std::any_cast<std::map<std::string, std::any>>(s->parse(data));
+  tsl::ordered_map<std::string, std::any> obj =
+      std::any_cast<tsl::ordered_map<std::string, std::any>>(s->parse(data));
 
   REQUIRE(s->get<int32_t>("a") == a);
   REQUIRE(s->get<int32_t>("b") == b);

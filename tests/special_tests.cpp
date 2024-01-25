@@ -36,13 +36,14 @@ TEST_CASE("Rebuild dynamic") {
                                     },
                                     Int32sl::create())),
                      Field("a", Int32sl::create()));
+
   int32_t a = 123;
   int32_t b = a + 333;
 
   s->get_field<Int32sl>("a").lock()->value = a;
   std::stringstream orig;
-  orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
   orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
   std::stringstream ss;
   s->build(ss);
   ss.seekg(0);
