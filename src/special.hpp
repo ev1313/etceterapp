@@ -120,7 +120,13 @@ public:
                                      child);
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override { return child->get_size(c); }
+  size_t get_size(std::weak_ptr<Base> c) override {
+    if (alignment_fn) {
+      alignment = alignment_fn.value()(this->parent);
+    }
+    auto csize = child->get_size(c);
+    return csize + modulo(-csize, alignment);
+  }
 
   std::any get() override { return child->get(); }
   std::any get_parsed() override { return child->get(); }
@@ -139,12 +145,11 @@ public:
     size_t before_offset = stream.tellg();
     auto ret = child->parse(stream);
     size_t after_offset = stream.tellg();
-    spdlog::warn("before: {}, after: {}", before_offset, after_offset);
     size_t pad = modulo(-(after_offset - before_offset), alignment);
-    spdlog::warn("pad: {}", pad);
     if (pad > 0) {
       stream.seekg(pad, std::ios_base::cur);
     }
+    assert(!stream.fail());
     return ret;
   }
 
@@ -152,13 +157,14 @@ public:
     if (alignment_fn) {
       alignment = alignment_fn.value()(this->parent);
     }
-    size_t before_offset = stream.tellg();
+    size_t before_offset = stream.tellp();
     child->build(stream);
     size_t after_offset = stream.tellp();
     size_t pad = modulo(-(after_offset - before_offset), alignment);
     if (pad > 0) {
       stream.seekp(pad, std::ios_base::cur);
     }
+    assert(!stream.fail());
   }
 
   void parse_xml(pugi::xml_node const &node, std::string name,
