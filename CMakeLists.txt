@@ -39,11 +39,13 @@ target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt
 target_include_directories(etceterapp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_executable(tests
+  tests/array_tests.cpp
   tests/basic_tests.cpp
   tests/conditional_tests.cpp
   tests/number_tests.cpp
   tests/special_tests.cpp
   tests/string_tests.cpp
+  tests/struct_tests.cpp
   tests/offset_tests.cpp
   tests/pointer_tests.cpp
   )

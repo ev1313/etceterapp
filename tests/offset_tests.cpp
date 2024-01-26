@@ -1,5 +1,7 @@
+#include "array.hpp"
 #include "basic.hpp"
 #include "number.hpp"
+#include "struct.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace etcetera;

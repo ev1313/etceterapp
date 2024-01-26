@@ -1,6 +1,7 @@
 #pragma once
 
 #include "basic.hpp"
+#include "struct.hpp"
 
 #include <optional>
 

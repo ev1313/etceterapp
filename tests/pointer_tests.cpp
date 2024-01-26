@@ -2,6 +2,7 @@
 #include "helpers.hpp"
 #include "number.hpp"
 #include "pointer.hpp"
+#include "struct.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace etcetera;
