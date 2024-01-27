@@ -102,6 +102,11 @@ public:
 
   bool is_array() override { return true; }
 
+  /*
+   * This is a helper function to initialize the fields of the array.
+   *
+   * Only for testing purposes.
+   * */
   void init_fields(size_t n = 0, bool clear = false) {
     data.clear();
     if (clear) {
@@ -149,6 +154,139 @@ public:
     }
     return parent;
   }
+};
+
+/*
+ * In contrast to construct this does not get the stream as an argument in its
+ * lambda, but it gets only the parsed object itself and its parent.
+ *
+ * The lambda returns a bool that determines, if parsing should stop or should
+ * not stop.
+ *
+ * The lambda gets the parsed object and its parent as arguments.
+ *
+ * It is possible to limit the size of this by setting the size attribute in
+ * create. This is in bytes and stop successfully if the stream offset
+ * difference hits this size. It throws if the offset is greater than the
+ * difference.
+ * */
+class RepeatUntil : public Base {
+protected:
+  typedef std::function<bool(std::weak_ptr<Base>, std::weak_ptr<Base>)>
+      RepeatFn;
+  typedef std::function<std::shared_ptr<Base>()> FTypeFn;
+  typedef std::function<size_t(std::weak_ptr<Base>)> FSizeFn;
+  RepeatFn repeat_fn;
+  FTypeFn type_constructor;
+  FSizeFn size_fn;
+  std::vector<std::shared_ptr<Base>> data;
+
+public:
+  using Base::get;
+  using Base::get_field;
+  using Base::get_offset;
+
+  RepeatUntil(PrivateBase, RepeatFn repeat_fn, FTypeFn m_type_constructor,
+              FSizeFn size_fn)
+      : Base(PrivateBase()), repeat_fn(repeat_fn),
+        type_constructor(m_type_constructor), size_fn(size_fn) {}
+
+  static std::shared_ptr<RepeatUntil>
+  create(RepeatFn repeat_fn, FTypeFn m_type_constructor, FSizeFn size_fn) {
+    return std::make_shared<RepeatUntil>(PrivateBase(), repeat_fn,
+                                         m_type_constructor, size_fn);
+  }
+
+  static std::shared_ptr<RepeatUntil> create(RepeatFn repeat_fn,
+                                             FTypeFn m_type_constructor) {
+    return std::make_shared<RepeatUntil>(PrivateBase(), repeat_fn,
+                                         m_type_constructor, nullptr);
+  }
+
+  size_t get_offset(size_t key) {
+    size_t ret = get_offset();
+    assert(key < data.size());
+    for (size_t i = 0; i < key; i++) {
+      try {
+        ret += data[i]->get_size(weak_from_this());
+      } catch (std::runtime_error &e) {
+        throw std::runtime_error(key + "->" + std::string(e.what()));
+      }
+    }
+    return ret;
+  }
+
+  size_t get_size(std::weak_ptr<Base> c) override {
+    size_t s = 0;
+    size_t i = 0;
+    for (auto &obj : data) {
+      try {
+        s += obj->get_size(weak_from_this());
+        i += 1;
+      } catch (std::runtime_error &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+                                 std::string(e.what()));
+      }
+    }
+    return s;
+  }
+
+  std::any parse(std::istream &stream) override {
+    int64_t before_offset = stream.tellg();
+    assert(before_offset >= 0);
+    data.clear();
+    size_t i = 0;
+
+    int64_t opt_size = 0;
+    if (size_fn) {
+      opt_size = (int64_t)size_fn(weak_from_this());
+    }
+
+    auto check_size = [&]() -> bool {
+      if (!size_fn) {
+        return true;
+      }
+      return stream.tellg() < (before_offset + opt_size);
+    };
+
+    while (check_size()) {
+      auto obj = type_constructor();
+      obj->set_parent(weak_from_this());
+      obj->set_idx(i);
+      data.push_back(obj);
+      try {
+        data.back()->parse(stream);
+        i += 1;
+        if (repeat_fn(data.back(), this->parent)) {
+          break;
+        }
+      } catch (std::runtime_error &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+                                 std::string(e.what()));
+      }
+    }
+    if (size_fn && (stream.tellg() > (before_offset + opt_size))) {
+      throw std::runtime_error("RepeatUntil: size limit exceeded!");
+    }
+    return data;
+  }
+
+  void build(std::ostream &stream) override {
+    size_t i = 0;
+    for (auto &obj : data) {
+      try {
+        obj->build(stream);
+        i += 1;
+      } catch (std::runtime_error &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+                                 std::string(e.what()));
+      }
+    }
+  }
+
+  std::any get() override { throw std::runtime_error("Not implemented"); }
+  std::any get(size_t key) override { return data[key]->get(); }
+  std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 };
 
 } // namespace etcetera

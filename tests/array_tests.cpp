@@ -1,5 +1,6 @@
 #include "array.hpp"
 #include "basic.hpp"
+#include "helpers.hpp"
 #include "number.hpp"
 #include "struct.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -91,4 +92,43 @@ TEST_CASE("Array XML Building") {
 </root>
 )";
   REQUIRE(ss.str() == expected);
+}
+
+TEST_CASE("RepeatUntil until parse specific value") {
+  auto f = RepeatUntil::create(
+      [](std::weak_ptr<Base> v, std::weak_ptr<Base>) -> bool {
+        return lock(v)->get<uint32_t>() == 123;
+      },
+      []() { return Int32ul::create(); });
+  std::stringstream data;
+  uint32_t a[10] = {1, 2, 3, 4, 5, 6, 7, 123, 8, 9};
+  data.write(reinterpret_cast<const char *>(a), sizeof(a));
+  f->parse(data);
+  REQUIRE(f->get_size({}) == 32);
+  REQUIRE(f->get<uint32_t>(0) == 1);
+  REQUIRE(f->get<uint32_t>(1) == 2);
+  REQUIRE(f->get<uint32_t>(2) == 3);
+  REQUIRE(f->get<uint32_t>(3) == 4);
+  REQUIRE(f->get<uint32_t>(4) == 5);
+  REQUIRE(f->get<uint32_t>(5) == 6);
+  REQUIRE(f->get<uint32_t>(6) == 7);
+  REQUIRE(f->get<uint32_t>(7) == 123);
+}
+
+TEST_CASE("RepeatUntil until size") {
+  auto f = RepeatUntil::create(
+      [](std::weak_ptr<Base>, std::weak_ptr<Base>) { return false; },
+      []() { return Int32ul::create(); },
+      [](std::weak_ptr<Base>) { return 20; });
+
+  std::stringstream data;
+  uint32_t a[10] = {1, 2, 3, 4, 5, 6, 7, 123, 8, 9};
+  data.write(reinterpret_cast<const char *>(a), sizeof(a));
+  f->parse(data);
+  REQUIRE(f->get_size({}) == 20);
+  REQUIRE(f->get<uint32_t>(0) == 1);
+  REQUIRE(f->get<uint32_t>(1) == 2);
+  REQUIRE(f->get<uint32_t>(2) == 3);
+  REQUIRE(f->get<uint32_t>(3) == 4);
+  REQUIRE(f->get<uint32_t>(4) == 5);
 }
