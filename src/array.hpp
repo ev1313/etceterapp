@@ -39,7 +39,7 @@ public:
     assert(key < data.size());
     for (size_t i = 0; i < key; i++) {
       try {
-        ret += data[i]->get_size(weak_from_this());
+        ret += data[i]->get_size();
       } catch (std::runtime_error &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }
@@ -47,12 +47,12 @@ public:
     return ret;
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override {
+  size_t get_size() override {
     size_t s = 0;
     size_t i = 0;
     for (auto &obj : data) {
       try {
-        s += obj->get_size(c);
+        s += obj->get_size();
         i += 1;
       } catch (std::runtime_error &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
@@ -208,7 +208,7 @@ public:
     assert(key < data.size());
     for (size_t i = 0; i < key; i++) {
       try {
-        ret += data[i]->get_size(weak_from_this());
+        ret += data[i]->get_size();
       } catch (std::runtime_error &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }
@@ -216,12 +216,12 @@ public:
     return ret;
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override {
+  size_t get_size() override {
     size_t s = 0;
     size_t i = 0;
     for (auto &obj : data) {
       try {
-        s += obj->get_size(weak_from_this());
+        s += obj->get_size();
         i += 1;
       } catch (std::runtime_error &e) {
         throw std::runtime_error(std::to_string(i) + "->" +

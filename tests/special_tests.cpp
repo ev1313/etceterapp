@@ -157,7 +157,7 @@ TEST_CASE("Aligned parsing") {
   REQUIRE(s->get<uint32_t>("aligned") == aligned);
   REQUIRE(s->get<uint32_t>("back") == back);
   REQUIRE(orig.peek() == EOF);
-  REQUIRE(s->get_size({}) == 15);
+  REQUIRE(s->get_size() == 15);
 }
 
 TEST_CASE("Aligned building") {
@@ -178,7 +178,7 @@ TEST_CASE("Aligned building") {
   orig.write(reinterpret_cast<const char *>(&back), sizeof(back));
 
   s->parse(orig);
-  std::stringstream ss(std::string(s->get_size({}), '\0'));
+  std::stringstream ss(std::string(s->get_size(), '\0'));
   ss.seekp(0, std::ios_base::beg);
   s->build(ss);
   REQUIRE(ss.str().size() == orig.str().size());

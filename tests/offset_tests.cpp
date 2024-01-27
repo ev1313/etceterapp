@@ -9,7 +9,7 @@ using namespace etcetera;
 TEST_CASE("Offset Tests without parent") {
   auto i = Int32ul::create();
   REQUIRE(i->get_offset() == 0);
-  REQUIRE(i->get_size({}) == 4);
+  REQUIRE(i->get_size() == 4);
 }
 
 TEST_CASE("Offset Tests Struct") {

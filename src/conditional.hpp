@@ -33,7 +33,7 @@ public:
                                         std::nullopt);
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override {
+  size_t get_size() override {
     std::shared_ptr<Base> child;
     if (if_fn(this->parent)) {
       if (!if_child) {
@@ -46,7 +46,7 @@ public:
       }
       child = else_child.value().second;
     }
-    return child->get_size(c);
+    return child->get_size();
   }
 
   std::any get() override {
@@ -178,9 +178,7 @@ public:
     return std::make_shared<Switch>(PrivateBase(), switch_fn, args...);
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override {
-    return current->get_size(c);
-  }
+  size_t get_size() override { return current->get_size(); }
 
   std::any get() override { return current->get(); }
 

@@ -65,7 +65,7 @@ TEST_CASE("Nested Arrays") {
 TEST_CASE("Size Test Arrays") {
   auto arr = Array::create(4, []() { return Int32sl::create(); });
   arr->init_fields();
-  REQUIRE(arr->get_size({}) == 16);
+  REQUIRE(arr->get_size() == 16);
 }
 
 TEST_CASE("Array XML Building") {
@@ -104,7 +104,7 @@ TEST_CASE("RepeatUntil until parse specific value") {
   uint32_t a[10] = {1, 2, 3, 4, 5, 6, 7, 123, 8, 9};
   data.write(reinterpret_cast<const char *>(a), sizeof(a));
   f->parse(data);
-  REQUIRE(f->get_size({}) == 32);
+  REQUIRE(f->get_size() == 32);
   REQUIRE(f->get<uint32_t>(0) == 1);
   REQUIRE(f->get<uint32_t>(1) == 2);
   REQUIRE(f->get<uint32_t>(2) == 3);
@@ -125,7 +125,7 @@ TEST_CASE("RepeatUntil until size") {
   uint32_t a[10] = {1, 2, 3, 4, 5, 6, 7, 123, 8, 9};
   data.write(reinterpret_cast<const char *>(a), sizeof(a));
   f->parse(data);
-  REQUIRE(f->get_size({}) == 20);
+  REQUIRE(f->get_size() == 20);
   REQUIRE(f->get<uint32_t>(0) == 1);
   REQUIRE(f->get<uint32_t>(1) == 2);
   REQUIRE(f->get<uint32_t>(2) == 3);

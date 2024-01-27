@@ -31,14 +31,12 @@ public:
 
   bool is_pointer_type() override { return true; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return 0; }
+  size_t get_size() override { return 0; }
 
   size_t get_ptr_offset(std::weak_ptr<Base>) override {
     return offset_fn(this->parent);
   }
-  size_t get_ptr_size(std::weak_ptr<Base>) override {
-    return sub->get_size(this->parent);
-  }
+  size_t get_ptr_size(std::weak_ptr<Base>) override { return sub->get_size(); }
 
   std::any get() override { return sub->get(); }
 
@@ -113,7 +111,7 @@ public:
 
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return 0; }
+  size_t get_size() override { return 0; }
 
   size_t get_ptr_offset(std::weak_ptr<Base>) override {
     return offset_fn(this->parent);
@@ -121,7 +119,7 @@ public:
   size_t get_ptr_size(std::weak_ptr<Base>) override {
     size_t size = 0;
     for (auto &sub : data) {
-      size += sub->get_size(this->parent);
+      size += sub->get_size();
     }
     return size;
   }

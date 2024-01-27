@@ -29,7 +29,7 @@ public:
   bool is_array() override { return child->is_array(); }
   bool is_simple_type() override { return child->is_simple_type(); }
 
-  size_t get_size(std::weak_ptr<Base> c) override { return child->get_size(c); }
+  size_t get_size() override { return child->get_size(); }
 
   std::any parse(std::istream &stream) override { return child->parse(stream); }
 
@@ -59,7 +59,7 @@ public:
     return std::make_shared<LazyBound>(PrivateBase(), lazy_fn);
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override { return child->get_size(c); }
+  size_t get_size() override { return child->get_size(); }
 
   std::any get() override { return child->get(); }
   std::any get_parsed() override { return child->get(); }
@@ -118,11 +118,11 @@ public:
                                      child);
   }
 
-  size_t get_size(std::weak_ptr<Base> c) override {
+  size_t get_size() override {
     if (alignment_fn) {
       alignment = alignment_fn.value()(this->parent);
     }
-    auto csize = child->get_size(c);
+    auto csize = child->get_size();
     return csize + modulo(-csize, alignment);
   }
 

@@ -50,7 +50,7 @@ public:
   }
   bool is_simple_type() override { return true; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return sizeof(TNumberType); }
+  size_t get_size() override { return sizeof(TNumberType); }
 
   void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     auto s = node.attribute(name.c_str());

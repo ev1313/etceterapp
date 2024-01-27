@@ -56,7 +56,7 @@ public:
   /*
    * Returns the size of the object in bytes
    * */
-  virtual size_t get_size(std::weak_ptr<Base> c) = 0;
+  virtual size_t get_size() = 0;
   virtual size_t get_ptr_offset(std::weak_ptr<Base>) {
     throw std::runtime_error("Not implemented");
   }
@@ -173,7 +173,7 @@ public:
 
   bool is_simple_type() override { return true; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
+  size_t get_size() override { return sizeof(T); }
 
   std::any parse(std::istream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(T));
@@ -208,7 +208,7 @@ public:
 
   std::any get() override { return value; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return value.length(); }
+  size_t get_size() override { return value.length(); }
 
   std::any parse(std::istream &stream) override {
     std::string tmp;
@@ -252,7 +252,7 @@ public:
 
   std::any get() override { return value; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return size; }
+  size_t get_size() override { return size; }
 
   std::any parse(std::istream &stream) override {
     value.resize(size);
@@ -317,7 +317,7 @@ public:
 
   std::any get() override { return value; }
 
-  size_t get_size(std::weak_ptr<Base>) override { return sizeof(T); }
+  size_t get_size() override { return sizeof(T); }
 
   std::any parse(std::istream &stream) override {
     stream.read(reinterpret_cast<char *>(&value), sizeof(value));

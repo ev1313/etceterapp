@@ -87,7 +87,7 @@ TEST_CASE("Struct Reuse Pattern") {
 TEST_CASE("Size Test Structs") {
   auto s = Struct::create(Field("a", Int32sl::create()),
                           Field("b", Int32sl::create()));
-  REQUIRE(s->get_size({}) == 8);
+  REQUIRE(s->get_size() == 8);
 }
 
 TEST_CASE("Struct XML parsing") {

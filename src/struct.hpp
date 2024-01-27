@@ -54,17 +54,17 @@ public:
       if (k == key) {
         return ret;
       }
-      ret += field->get_size(weak_from_this());
+      ret += field->get_size();
     }
     throw std::runtime_error("Struct: " + key + " not found!");
     return 0;
   }
 
-  size_t get_size(std::weak_ptr<Base>) override {
+  size_t get_size() override {
     size_t size = 0;
     for (auto &[key, field] : fields) {
       try {
-        size += field->get_size(weak_from_this());
+        size += field->get_size();
       } catch (std::runtime_error &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }

@@ -82,30 +82,30 @@ TEST_CASE("Int8ul parsing test") {
 }
 
 TEST_CASE("Test number sizes") {
-  REQUIRE(Int8ul::create()->get_size({}) == 1);
-  REQUIRE(Int16ul::create()->get_size({}) == 2);
-  REQUIRE(Int32ul::create()->get_size({}) == 4);
-  REQUIRE(Int64ul::create()->get_size({}) == 8);
+  REQUIRE(Int8ul::create()->get_size() == 1);
+  REQUIRE(Int16ul::create()->get_size() == 2);
+  REQUIRE(Int32ul::create()->get_size() == 4);
+  REQUIRE(Int64ul::create()->get_size() == 8);
 
-  REQUIRE(Int8sl::create()->get_size({}) == 1);
-  REQUIRE(Int16sl::create()->get_size({}) == 2);
-  REQUIRE(Int32sl::create()->get_size({}) == 4);
-  REQUIRE(Int64sl::create()->get_size({}) == 8);
+  REQUIRE(Int8sl::create()->get_size() == 1);
+  REQUIRE(Int16sl::create()->get_size() == 2);
+  REQUIRE(Int32sl::create()->get_size() == 4);
+  REQUIRE(Int64sl::create()->get_size() == 8);
 
-  REQUIRE(Int8ub::create()->get_size({}) == 1);
-  REQUIRE(Int16ub::create()->get_size({}) == 2);
-  REQUIRE(Int32ub::create()->get_size({}) == 4);
-  REQUIRE(Int64ub::create()->get_size({}) == 8);
+  REQUIRE(Int8ub::create()->get_size() == 1);
+  REQUIRE(Int16ub::create()->get_size() == 2);
+  REQUIRE(Int32ub::create()->get_size() == 4);
+  REQUIRE(Int64ub::create()->get_size() == 8);
 
-  REQUIRE(Int8sb::create()->get_size({}) == 1);
-  REQUIRE(Int16sb::create()->get_size({}) == 2);
-  REQUIRE(Int32sb::create()->get_size({}) == 4);
-  REQUIRE(Int64sb::create()->get_size({}) == 8);
+  REQUIRE(Int8sb::create()->get_size() == 1);
+  REQUIRE(Int16sb::create()->get_size() == 2);
+  REQUIRE(Int32sb::create()->get_size() == 4);
+  REQUIRE(Int64sb::create()->get_size() == 8);
 
-  REQUIRE(Float32l::create()->get_size({}) == 4);
-  REQUIRE(Float64l::create()->get_size({}) == 8);
-  REQUIRE(Float32b::create()->get_size({}) == 4);
-  REQUIRE(Float64b::create()->get_size({}) == 8);
+  REQUIRE(Float32l::create()->get_size() == 4);
+  REQUIRE(Float64l::create()->get_size() == 8);
+  REQUIRE(Float32b::create()->get_size() == 4);
+  REQUIRE(Float64b::create()->get_size() == 8);
 }
 
 TEST_CASE("Int XML parsing") {

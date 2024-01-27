@@ -17,7 +17,7 @@ TEST_CASE("String UTF-32") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size({}) == s.length() * sizeof(char32_t));
+  REQUIRE(field->get_size() == s.length() * sizeof(char32_t));
 }
 
 TEST_CASE("String UTF-16") {
@@ -32,7 +32,7 @@ TEST_CASE("String UTF-16") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size({}) == s.length() * sizeof(char16_t));
+  REQUIRE(field->get_size() == s.length() * sizeof(char16_t));
 }
 
 TEST_CASE("String UTF-16 be") {
@@ -52,7 +52,7 @@ TEST_CASE("String UTF-16 be") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size({}) == s.length() * sizeof(char16_t));
+  REQUIRE(field->get_size() == s.length() * sizeof(char16_t));
 }
 
 TEST_CASE("String UTF-8") {
@@ -68,7 +68,7 @@ TEST_CASE("String UTF-8") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size({}) == s.length() * sizeof(char8_t));
+  REQUIRE(field->get_size() == s.length() * sizeof(char8_t));
 }
 
 TEST_CASE("UTF-8 String to XML") {

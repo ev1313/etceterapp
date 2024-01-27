@@ -55,7 +55,7 @@ TEST_CASE("Pointer build test") {
   REQUIRE(orig.tellp() == 20);
 
   std::string str;
-  str.resize(s->get_size({}), '\0');
+  str.resize(s->get_size(), '\0');
   std::stringstream ss(str);
   s->parse(orig);
   s->build(ss);
@@ -119,7 +119,7 @@ TEST_CASE("Area build test") {
 
   s->parse(orig);
   std::stringstream ss(
-      std::string(s->get_size({}) + sizeof(data) + sizeof(pad), '\0'));
+      std::string(s->get_size() + sizeof(data) + sizeof(pad), '\0'));
   s->build(ss);
   ss.seekg(0, std::ios::beg);
   orig.seekg(0, std::ios::beg);

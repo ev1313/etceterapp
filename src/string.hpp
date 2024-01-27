@@ -37,7 +37,7 @@ public:
     return std::make_shared<CString>(PrivateBase());
   }
 
-  size_t get_size(std::weak_ptr<Base>) override {
+  size_t get_size() override {
     TStringType s;
     if constexpr (std::is_same<std::u16string, TStringType>()) {
       // FIXME: this is a hack
