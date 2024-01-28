@@ -94,8 +94,8 @@ public:
       }
       stream.write((char *)&c, sizeof(typename TStringType::value_type));
     }
-    char c[4] = {0};
-    stream.write(c, sizeof(typename TStringType::value_type));
+    typename TStringType::value_type c = 0;
+    stream.write((char *)&c, sizeof(typename TStringType::value_type));
   }
 };
 using CString8l = CString<std::string, std::endian::little>;
