@@ -1,3 +1,5 @@
+#include "helpers.hpp"
+#include "number.hpp"
 #include "string.hpp"
 #include "struct.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -174,6 +176,43 @@ TEST_CASE("Padded UTF-8 String") {
   REQUIRE(field->value.length() == s.length());
   REQUIRE(field->value == s);
   REQUIRE(field->get<std::string>() == s);
+  field->build(ss);
+  REQUIRE(ss.str().length() == orig.str().length());
+  REQUIRE(ss.str() == orig.str());
+}
+
+/*
+TEST_CASE("Padded UTF-16 String") {
+  auto field = PaddedString16l::create(10);
+  std::stringstream ss, orig;
+  std::u16string s = u"abcd\0\0\0\0\0\0"s;
+  orig.write(s.c_str(), s.length());
+  field->parse(orig);
+  REQUIRE(field->value.length() == s.length());
+  REQUIRE(field->value == s);
+  REQUIRE(field->get<std::string>() == s);
+  field->build(ss);
+  REQUIRE(ss.str().length() == orig.str().length());
+  REQUIRE(ss.str() == orig.str());
+}
+*/
+
+TEST_CASE("Pascal String") {
+  auto field = Struct::create(
+      Field("length", Int32ul::create()),
+      Field("string",
+            PaddedString8l::create([](std::weak_ptr<Base> parent) -> size_t {
+              return lock(parent)->get<uint32_t>("length");
+            })));
+
+  std::stringstream ss, orig;
+  std::string s = "abcd";
+  uint32_t len = s.length();
+  orig.write((char *)&len, sizeof(len));
+  orig.write(s.c_str(), s.length());
+  field->parse(orig);
+  REQUIRE(field->get<uint32_t>("length") == len);
+  REQUIRE(field->get<std::string>("string") == s);
   field->build(ss);
   REQUIRE(ss.str().length() == orig.str().length());
   REQUIRE(ss.str() == orig.str());

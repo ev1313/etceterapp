@@ -147,7 +147,7 @@ public:
     TStringType s;
     s.clear();
     int64_t old_offset = stream.tellg();
-    while (stream.tellg() < old_offset + size) {
+    while ((int64_t)stream.tellg() < (old_offset + (int64_t)size)) {
       assert(stream.tellg() >= 0);
       stream.read(data.bytes, sizeof(typename TStringType::value_type));
       if constexpr (Endianess != std::endian::native) {
@@ -183,7 +183,7 @@ public:
       }
       stream.write((char *)&c, sizeof(typename TStringType::value_type));
     }
-    assert(stream.tellp() - old_offset <= size);
+    assert(((int64_t)stream.tellp() - old_offset) <= (int64_t)size);
     for (size_t i = 0; i < size - (stream.tellp() - old_offset); i++) {
       stream.write("\0", 1);
     }
