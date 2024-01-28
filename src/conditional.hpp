@@ -161,6 +161,7 @@ public:
   typedef std::tuple<T, std::string, FTypeFn> SwitchField;
   using Base::get;
   using Base::get_field;
+  using Base::get_offset;
 
   template <typename... Args>
   Switch(PrivateBase, FSwitchFn switch_fn, Args &&...args)

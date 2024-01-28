@@ -1,15 +1,65 @@
 #include "string.hpp"
+#include "struct.hpp"
 #include <catch2/catch_test_macros.hpp>
 
 #include "utfconv.hpp"
 
 using namespace etcetera;
 
+TEST_CASE("CString8 in struct") {
+  auto s = Struct::create(Field("a", CString8l::create()),
+                          Field("b", CString8l::create()));
+  std::stringstream data;
+  std::string a = "abcd";
+  std::string b = "efgh";
+  data.write(a.c_str(), a.length() + 1);
+  data.write(b.c_str(), b.length() + 1);
+  auto obj =
+      std::any_cast<tsl::ordered_map<std::string, std::any>>(s->parse(data));
+  REQUIRE(std::any_cast<std::string>(obj["a"]).length() == a.length());
+  REQUIRE(std::any_cast<std::string>(obj["b"]).length() == b.length());
+  REQUIRE(std::any_cast<std::string>(obj["a"]) == a);
+  REQUIRE(std::any_cast<std::string>(obj["b"]) == b);
+}
+
+TEST_CASE("CString16 in struct") {
+  auto s = Struct::create(Field("a", CString16l::create()),
+                          Field("b", CString16l::create()));
+  std::stringstream data;
+  std::u16string a = u"abcd";
+  std::u16string b = u"efgh";
+  data.write((char *)a.c_str(), (a.length() + 1) * sizeof(char16_t));
+  data.write((char *)b.c_str(), (b.length() + 1) * sizeof(char16_t));
+  auto obj =
+      std::any_cast<tsl::ordered_map<std::string, std::any>>(s->parse(data));
+  REQUIRE(std::any_cast<std::string>(obj["a"]).length() == 4);
+  REQUIRE(std::any_cast<std::string>(obj["b"]).length() == 4);
+  REQUIRE(std::any_cast<std::string>(obj["a"]) == "abcd");
+  REQUIRE(std::any_cast<std::string>(obj["b"]) == "efgh");
+}
+
+TEST_CASE("CString16 in struct building") {
+  auto s = Struct::create(Field("a", CString16l::create()),
+                          Field("b", CString16l::create()));
+  std::stringstream data;
+  std::u16string a = u"abcd";
+  std::u16string b = u"efgh";
+  data.write((char *)a.c_str(), (a.length() + 1) * sizeof(char16_t));
+  data.write((char *)b.c_str(), (b.length() + 1) * sizeof(char16_t));
+  std::stringstream ss;
+  s->parse(data);
+  s->build(ss);
+  ss.seekg(0);
+  data.seekg(0);
+  REQUIRE(ss.str().length() == data.str().length());
+  REQUIRE(ss.str() == data.str());
+}
+
 TEST_CASE("String UTF-32") {
   auto field = CString32l::create();
   std::stringstream ss, orig;
   std::u32string s = U"abcd";
-  orig.write((char *)s.c_str(), s.length() * sizeof(char32_t));
+  orig.write((char *)s.c_str(), (s.length() + 1) * sizeof(char32_t));
   auto ret = field->parse(orig);
   REQUIRE(Utf8To32(field->value) == s);
   field->build(ss);
@@ -17,14 +67,14 @@ TEST_CASE("String UTF-32") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size() == s.length() * sizeof(char32_t));
+  REQUIRE(field->get_size() == (s.length() + 1) * sizeof(char32_t));
 }
 
 TEST_CASE("String UTF-16") {
   auto field = CString16l::create();
   std::stringstream ss, orig;
   std::u16string s = u"abcd";
-  orig.write((char *)s.c_str(), s.length() * sizeof(char16_t));
+  orig.write((char *)s.c_str(), (s.length() + 1) * sizeof(char16_t));
   auto ret = field->parse(orig);
   REQUIRE(Utf32To16(Utf8To32(field->value)) == s);
   field->build(ss);
@@ -32,7 +82,7 @@ TEST_CASE("String UTF-16") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size() == s.length() * sizeof(char16_t));
+  REQUIRE(field->get_size() == (s.length() + 1) * sizeof(char16_t));
 }
 
 TEST_CASE("String UTF-16 be") {
@@ -45,6 +95,7 @@ TEST_CASE("String UTF-16 be") {
     orig.write((char *)&c, sizeof(char16_t));
     orig_s.push_back(c);
   }
+  orig.write("\0\0", 2);
   auto ret = field->parse(orig);
   field->build(ss);
   REQUIRE(field->value == "abcdäöüß");
@@ -52,14 +103,14 @@ TEST_CASE("String UTF-16 be") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size() == s.length() * sizeof(char16_t));
+  REQUIRE(field->get_size() == (s.length() + 1) * sizeof(char16_t));
 }
 
 TEST_CASE("String UTF-8") {
   auto field = CString8l::create();
   std::stringstream ss, orig;
   std::string s = "abcd";
-  orig.write(s.c_str(), s.length());
+  orig.write(s.c_str(), (s.length() + 1));
   REQUIRE(std::any_cast<std::string>(field->parse(orig)) == s);
   REQUIRE(field->value == s);
   REQUIRE(field->get<std::string>() == s);
@@ -68,7 +119,7 @@ TEST_CASE("String UTF-8") {
   ss.seekg(0);
   orig.seekg(0);
   REQUIRE(ss.str() == orig.str());
-  REQUIRE(field->get_size() == s.length() * sizeof(char8_t));
+  REQUIRE(field->get_size() == (s.length() + 1) * sizeof(char8_t));
 }
 
 TEST_CASE("UTF-8 String to XML") {
