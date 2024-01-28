@@ -190,4 +190,11 @@ public:
   }
 };
 
+using PaddedString8l = PaddedString<std::string, std::endian::little>;
+using PaddedString16l = PaddedString<std::u16string, std::endian::little>;
+using PaddedString32l = PaddedString<std::u32string, std::endian::little>;
+using PaddedString8b = PaddedString<std::string, std::endian::big>;
+using PaddedString16b = PaddedString<std::u16string, std::endian::big>;
+using PaddedString32b = PaddedString<std::u32string, std::endian::big>;
+
 } // namespace etcetera

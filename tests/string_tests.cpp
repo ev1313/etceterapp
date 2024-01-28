@@ -4,6 +4,7 @@
 
 #include "utfconv.hpp"
 
+using namespace std::string_literals;
 using namespace etcetera;
 
 TEST_CASE("CString8 in struct") {
@@ -162,4 +163,18 @@ TEST_CASE("UTF-32 String to XML") {
   REQUIRE(ss.str() == R"(<?xml version="1.0"?>
 <root test="abcd" />
 )");
+}
+
+TEST_CASE("Padded UTF-8 String") {
+  auto field = PaddedString8l::create(10);
+  std::stringstream ss, orig;
+  std::string s = "abcd\0\0\0\0\0\0"s;
+  orig.write(s.c_str(), s.length());
+  field->parse(orig);
+  REQUIRE(field->value.length() == s.length());
+  REQUIRE(field->value == s);
+  REQUIRE(field->get<std::string>() == s);
+  field->build(ss);
+  REQUIRE(ss.str().length() == orig.str().length());
+  REQUIRE(ss.str() == orig.str());
 }
