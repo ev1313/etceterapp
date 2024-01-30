@@ -5,6 +5,7 @@
 #include "number.hpp"
 #include "pointer.hpp"
 #include "special.hpp"
+#include "string.hpp"
 #include "struct.hpp"
 
 #include "argparse/argparse.hpp"
@@ -108,9 +109,249 @@ NDFObject = Struct(
 
    */
 
-  auto NDFObject = Struct::create(Field("classIndex", Int32ul::create())
-                                  // Field("properties")
-  );
+  using NDFField = Switch<uint32_t>::SwitchField;
+  auto NDFType = LazyBound::create([](std::weak_ptr<LazyBound> p) {
+    spdlog::info("NDFType");
+    return Struct::create(
+        Field("typeId", Int32ul::create()),
+        Field(
+            "data",
+            Switch<uint32_t>::create(
+                [](std::weak_ptr<Base> c) -> uint32_t {
+                  return lock(c)->get<uint32_t>("typeId");
+                },
+                NDFField(0x00000000, "Boolean",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int8ul::create()));
+                         }),
+                NDFField(0x00000001, "Int8",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int8ul::create()));
+                         }),
+                NDFField(0x00000002, "Int32",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int32sl::create()));
+                         }),
+                NDFField(0x00000003, "UInt32",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int32ul::create()));
+                         }),
+                NDFField(0x00000004, "Unk0x4",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Bytes::create(8)));
+                         }),
+                NDFField(0x00000005, "Float32",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Float32l::create()));
+                         }),
+                NDFField(0x00000006, "Float64",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Float64l::create()));
+                         }),
+                NDFField(0x00000007, "StringReference",
+                         [p]() {
+                           return Struct::create(
+                               Field("stringIndex", Int32ul::create()));
+                         }),
+                NDFField(0x00000008, "WideString",
+                         [p]() {
+                           return Struct::create(
+                               Field("len", Int32ul::create()),
+                               Field("str",
+                                     PaddedString16l::create(
+                                         [](std::weak_ptr<Base> c) -> size_t {
+                                           return lock(c)->get<uint32_t>("len");
+                                         })));
+                         }),
+                NDFField(
+                    0x00000009, "Reference",
+                    [p]() {
+                      return Struct::create(
+                          Field("typeId", Int32ul::create()),
+                          Field("ref",
+                                Switch<uint32_t>::create(
+                                    [](std::weak_ptr<Base> c) -> uint32_t {
+                                      return lock(c)->get<uint32_t>("typeId");
+                                    },
+                                    NDFField(0xAAAAAAAA, "TranReference",
+                                             [p]() {
+                                               return Struct::create(
+                                                   Field("tranIndex",
+                                                         Int32ul::create()));
+                                             }),
+                                    NDFField(0xBBBBBBBB, "ObjectReference",
+                                             [p]() {
+                                               return Struct::create(
+                                                   Field("objectIndex",
+                                                         Int32ul::create()),
+                                                   Field("classIndex",
+                                                         Int32ul::create()));
+                                             }))));
+                    }),
+                NDFField(0x0000000B, "F32_vec3",
+                         [p]() {
+                           return Struct::create(
+                               Field("x", Float32l::create()),
+                               Field("y", Float32l::create()),
+                               Field("z", Float32l::create()));
+                         }),
+                NDFField(0x0000000C, "F32_vec4",
+                         [p]() {
+                           return Struct::create(
+                               Field("x", Float32l::create()),
+                               Field("y", Float32l::create()),
+                               Field("z", Float32l::create()),
+                               Field("w", Float32l::create()));
+                         }),
+                NDFField(0x0000000D, "Color",
+                         [p]() {
+                           return Struct::create(Field("r", Int8ul::create()),
+                                                 Field("g", Int8ul::create()),
+                                                 Field("b", Int8ul::create()),
+                                                 Field("a", Int8ul::create()));
+                         }),
+                NDFField(0x0000000E, "S32_vec3",
+                         [p]() {
+                           return Struct::create(Field("x", Int32sl::create()),
+                                                 Field("y", Int32sl::create()),
+                                                 Field("z", Int32sl::create()));
+                         }),
+                NDFField(0x0000000F, "Matrix",
+                         [p]() {
+                           return Struct::create(
+                               Field("Matrix", Array::create(16, []() {
+                                       return Float32l::create();
+                                     })));
+                         }),
+                NDFField(0x00000011, "List",
+                         [p]() {
+                           return Struct::create(
+                               Field("length",
+                                     Rebuild::create(
+                                         [](std::weak_ptr<Base> c) -> uint32_t {
+                                           return lock(lock(c)->get_field(
+                                                           "items"))
+                                               ->length();
+                                         },
+                                         Int32ul::create())),
+                               Field("items",
+                                     Array::create(
+                                         [](std::weak_ptr<Base> c) {
+                                           return lock(c)->get_parsed<uint32_t>(
+                                               "length");
+                                         },
+                                         [p]() {
+                                           return LazyBound::create(
+                                               lock(p)->get_lazy_fn());
+                                         })));
+                         }),
+                NDFField(
+                    0x00000012, "Map",
+                    [p]() {
+                      return Struct::create(
+                          Field("count",
+                                Rebuild::create(
+                                    [](std::weak_ptr<Base> c) -> uint32_t {
+                                      return lock(
+                                                 lock(c)->get_field("mapitems"))
+                                          ->length();
+                                    },
+                                    Int32ul::create())),
+                          Field("mapitems",
+                                Array::create(
+                                    [](std::weak_ptr<Base> c) {
+                                      return lock(c)->get_parsed<uint32_t>(
+                                          "count");
+                                    },
+                                    [p]() {
+                                      return Struct::create(
+                                          Field("key",
+                                                LazyBound::create(
+                                                    lock(p)->get_lazy_fn())),
+                                          Field("value",
+                                                LazyBound::create(
+                                                    lock(p)->get_lazy_fn())));
+                                    })));
+                    }),
+                NDFField(0x00000013, "Long",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int64ul::create()));
+                         }),
+                NDFField(0x00000014, "Blob",
+                         [p]() {
+                           return Struct::create(
+                               Field("size", Int32ul::create()),
+                               Field("data",
+                                     Bytes::create([](std::weak_ptr<Base> c) {
+                                       return lock(c)->get<uint32_t>("size");
+                                     })));
+                         }),
+                NDFField(0x00000018, "S16",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int16sl::create()));
+                         }),
+                NDFField(0x00000019, "U16",
+                         [p]() {
+                           return Struct::create(
+                               Field("value", Int16ul::create()));
+                         }),
+                NDFField(0x0000001A, "GUID",
+                         [p]() {
+                           return Struct::create(
+                               Field("data", Bytes::create(16)));
+                         }),
+                NDFField(0x0000001C, "PathReference",
+                         [p]() {
+                           return Struct::create(
+                               Field("stringIndex", Int32ul::create()));
+                         }),
+                NDFField(0x0000001D, "LocalisationHash",
+                         [p]() {
+                           return Struct::create(
+                               Field("data", Bytes::create(8)));
+                         }),
+                NDFField(0x00000022, "Pair",
+                         [p]() {
+                           return Struct::create(
+                               Field("first",
+                                     LazyBound::create(lock(p)->get_lazy_fn())),
+                               Field("second", LazyBound::create(
+                                                   lock(p)->get_lazy_fn())));
+                         }) //
+                )));
+  });
+
+  auto NDFProperty = [NDFType]() {
+    return Struct::create(Field("propertyIndex", Int32ul::create()),
+                          Field("value", IfThenElse::create(
+                                             [](std::weak_ptr<Base> c) {
+                                               return lock(c)->get<uint32_t>(
+                                                          "propertyIndex") !=
+                                                      0xABABABAB;
+                                             },
+                                             Field("NDFType", NDFType))));
+  };
+
+  auto NDFObject = [NDFProperty]() {
+    return Struct::create(
+        Field("classIndex", Int32ul::create()),
+        Field("properties",
+              RepeatUntil::create(
+                  [](std::weak_ptr<Base> obj, std::weak_ptr<Base>) -> bool {
+                    return lock(obj)->get<uint32_t>("propertyIndex") ==
+                           0xABABABAB;
+                  },
+                  NDFProperty)));
+  };
 
   auto OBJETable = Struct::create(
       Field("magic", BytesConst::create("OBJE"s)),
@@ -118,15 +359,20 @@ NDFObject = Struct(
       Field("offset", Rebuild::create(
                           [](std::weak_ptr<Base> c) {
                             return std::make_any<uint32_t>(
-                                lock(c)->get<uint32_t>("_", "headerSize"));
+                                lock(c)->get<uint32_t>("_", "_", "headerSize"));
                           },
                           Int32ul::create())),
       Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("size", Int32ul::create()),
-      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s))
-      // Field("objects", Area("Object" / NDFObject,
-      // offset=this.offset, size=this.size),
-  );
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("objects", Area::create(
+                           [](std::weak_ptr<Base> c) {
+                             return lock(c)->get<uint32_t>("offset");
+                           },
+                           [](std::weak_ptr<Base> c) {
+                             return lock(c)->get<uint32_t>("size");
+                           },
+                           NDFObject)));
 
   auto TOC0Header = Struct::create(
       Field("magic", BytesConst::create("TOC0"s)),

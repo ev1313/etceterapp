@@ -23,7 +23,10 @@ public:
   }
 
   std::any get() override { return rebuild_fn(this->parent); }
-  std::any get_parsed() override { return child->get(); }
+  std::any get_parsed() override {
+    spdlog::info("Rebuild::get_parsed {}", name);
+    return child->get();
+  }
 
   bool is_struct() override { return child->is_struct(); }
   bool is_array() override { return child->is_array(); }
@@ -31,7 +34,10 @@ public:
 
   size_t get_size() override { return child->get_size(); }
 
-  std::any parse(std::istream &stream) override { return child->parse(stream); }
+  std::any parse(std::istream &stream) override {
+    spdlog::info("Rebuild::parse {:02X} {}", (size_t)stream.tellg(), name);
+    return child->parse(stream);
+  }
 
   void build(std::ostream &stream) override {
     auto data = this->get();
@@ -71,6 +77,7 @@ public:
   FLazyFn get_lazy_fn() { return lazy_fn; }
 
   std::any parse(std::istream &stream) override {
+    spdlog::info("LazyBound::parse {:02X} {}", (size_t)stream.tellg(), name);
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
     child->set_parent(weak_from_this());
     return child->parse(stream);

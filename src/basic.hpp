@@ -10,6 +10,8 @@
 #include <memory>
 #include <tsl/ordered_map.h>
 
+#include "helpers.hpp"
+
 #include <pugixml.hpp>
 #include <spdlog/spdlog.h>
 
@@ -57,25 +59,40 @@ public:
    * Returns the size of the object in bytes
    * */
   virtual size_t get_size() = 0;
+
+  /*
+   * Only for Pointers, returns the offset of the pointer data.
+   * */
   virtual size_t get_ptr_offset(std::weak_ptr<Base>) {
     throw std::runtime_error("Not implemented");
   }
+  /*
+   * Only for Pointers, returns the size of the pointer data.
+   * */
   virtual size_t get_ptr_size(std::weak_ptr<Base>) {
     throw std::runtime_error("Not implemented");
+  }
+
+  virtual size_t length() {
+    throw std::runtime_error("length: Not implemented name: " + name +
+                             " idx: " + std::to_string(idx));
   }
 
   /*
    * Returns the child field itself. Used for modifying the fields in test
    * cases.
    * */
-  virtual std::weak_ptr<Base> get_field(std::string) {
-    throw std::runtime_error("Not implemented");
+  virtual std::weak_ptr<Base> get_field(std::string key) {
+    throw std::runtime_error("get_field(" + key + "): Not implemented name: " +
+                             name + " idx: " + std::to_string(idx));
   };
   template <typename T> std::weak_ptr<T> get_field(std::string key) {
     return static_pointer_cast<T>(get_field(key));
   }
-  virtual std::weak_ptr<Base> get_field(size_t) {
-    throw std::runtime_error("Not implemented");
+  virtual std::weak_ptr<Base> get_field(size_t key) {
+    throw std::runtime_error("get_field(" + std::to_string(key) +
+                             "): Not implemented name: " + name +
+                             " idx: " + std::to_string(idx));
   };
   template <typename T> std::weak_ptr<T> get_field(size_t key) {
     return static_pointer_cast<T>(get_field(key));
@@ -84,9 +101,9 @@ public:
   std::weak_ptr<T> get_field(K key, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
     if constexpr (sizeof...(Ts) == 0) {
-      return static_pointer_cast<T>(field.lock());
+      return static_pointer_cast<T>(lock(field));
     } else {
-      return field.lock()->get_field<T>(args...);
+      return lock(field)->get_field<T>(args...);
     }
   }
 
@@ -94,20 +111,27 @@ public:
   virtual std::any get() = 0;
   template <typename T> T get() { return std::any_cast<T>(get()); }
   virtual std::any get(std::string) {
-    throw std::runtime_error("Not implemented");
+    throw std::runtime_error("get: Not implemented name: " + name +
+                             " idx: " + std::to_string(idx));
   };
   template <typename T> T get(std::string key) {
     return std::any_cast<T>(get(key));
   }
-  virtual std::any get(size_t) { throw std::runtime_error("Not implemented"); };
+  virtual std::any get(size_t) {
+    throw std::runtime_error("get: Not implemented name: " + name +
+                             " idx: " + std::to_string(idx));
+  };
   template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
   template <typename T, typename K, typename... Ts> T get(K key, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
-    return field.lock()->get<T>(args...);
+    // spdlog::warn("get: {} {} {}", key, lock(field)->name, lock(field)->idx);
+    return lock(field)->get<T>(args...);
   }
 
   virtual std::any get_parsed() { return get(); };
-  template <typename T> T get_parsed() { return std::any_cast<T>(get()); }
+  template <typename T> T get_parsed() {
+    return std::any_cast<T>(get_parsed());
+  }
   virtual std::any get_parsed(std::string key) { return get(key); };
   template <typename T> T get_parsed(std::string key) {
     return std::any_cast<T>(get_parsed(key));
@@ -116,20 +140,20 @@ public:
     throw std::runtime_error("Not implemented");
   };
   template <typename T> T get_parsed(size_t key) {
-    return std::any_cast<T>(get(key));
+    return std::any_cast<T>(get_parsed(key));
   }
   template <typename T, typename K, typename... Ts>
   T get_parsed(K key, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
-    return field.lock()->get<T>(args...);
+    return lock(field)->get_parsed<T>(args...);
   }
 
   virtual size_t get_offset() {
     if (parent.lock()) {
-      if (parent.lock()->is_array()) {
-        return parent.lock()->get_offset(idx);
-      } else if (parent.lock()->is_struct()) {
-        return parent.lock()->get_offset(name);
+      if (lock(parent)->is_array()) {
+        return lock(parent)->get_offset(idx);
+      } else if (lock(parent)->is_struct()) {
+        return lock(parent)->get_offset(name);
       }
       throw std::runtime_error("Base: parent is not array or struct!");
     }
@@ -144,7 +168,7 @@ public:
   template <typename K, typename K2, typename... Ts>
   size_t get_offset(K key, K2 key2, Ts &&...args) {
     std::weak_ptr<Base> field = get_field(key);
-    return field.lock()->get_offset(key2, args...);
+    return lock(field)->get_offset(key2, args...);
   }
 
   virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
@@ -234,6 +258,8 @@ public:
 
 class Bytes : public Base {
 protected:
+  typedef std::function<size_t(std::weak_ptr<Base>)> FSizeFn;
+  FSizeFn size_fn;
   size_t size;
 
 public:
@@ -241,30 +267,49 @@ public:
   using Base::get_field;
   using Base::get_offset;
   std::vector<uint8_t> value;
-  Bytes(size_t s, PrivateBase) : Base(PrivateBase()), size(s) {
-    value.resize(s);
+  Bytes(PrivateBase, FSizeFn size_fn, size_t size)
+      : Base(PrivateBase()), size_fn(size_fn), size(size) {
+    value.resize(size);
   }
   static std::shared_ptr<Bytes> create(size_t s) {
-    return std::make_shared<Bytes>(s, PrivateBase());
+    return std::make_shared<Bytes>(PrivateBase(), nullptr, s);
+  }
+  static std::shared_ptr<Bytes> create(FSizeFn size_fn) {
+    return std::make_shared<Bytes>(PrivateBase(), size_fn, 0);
   }
 
   bool is_simple_type() override { return true; }
 
   std::any get() override { return value; }
 
-  size_t get_size() override { return size; }
+  size_t get_size() override {
+    if (size_fn) {
+      size = size_fn(this->parent);
+    }
+    return size;
+  }
 
   std::any parse(std::istream &stream) override {
+    get_size();
     value.resize(size);
+
+    spdlog::info("Bytes {:02X} {} read", (size_t)stream.tellg(), value.size());
     stream.read(reinterpret_cast<char *>(value.data()), value.size());
+
+    std::string s;
+    for (auto &c : value) {
+      s += std::format("{:02X}", static_cast<uint8_t>(c));
+    }
     return value;
   }
 
   void build(std::ostream &stream) override {
+    assert(value.size() == size);
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
   }
 
   void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
+    get_size();
     std::string attr = node.attribute(name.c_str()).as_string();
     if (attr.length() != size * 2) {
       throw std::runtime_error("Bytes: expected " + std::to_string(size * 2) +

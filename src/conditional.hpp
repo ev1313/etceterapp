@@ -189,7 +189,15 @@ public:
 
   std::any parse(std::istream &stream) override {
     value = switch_fn(this->parent);
+    spdlog::info("stream pos {:02X} reading {:02X} {}", (int64_t)stream.tellg(),
+                 value, names[value]);
+    if (!fields.contains(value)) {
+      throw std::runtime_error("Switch: " + std::to_string(value) +
+                               " not found!");
+    }
     current = fields[value]();
+    current->set_parent(weak_from_this());
+    current->set_name(names[value]);
     return current->parse(stream);
   }
 

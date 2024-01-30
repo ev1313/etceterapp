@@ -27,6 +27,8 @@ public:
       }
       value = bswap.value;
     }
+    spdlog::info("NumberType::parse {:02X} {} {}", (size_t)stream.tellg(), name,
+                 value);
     return value;
   }
   void build(std::ostream &stream) override {

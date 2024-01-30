@@ -34,8 +34,14 @@ public:
   std::any parse(std::istream &stream) override {
     tsl::ordered_map<std::string, std::any> obj;
     for (auto &[key, field] : fields) {
-      std::any value = field->parse(stream);
-      obj.emplace(key, value);
+      try {
+        spdlog::info("Struct::parse {:02X} {}", (size_t)stream.tellg(), key);
+        std::any value = field->parse(stream);
+        obj.emplace(key, value);
+      } catch (std::runtime_error &e) {
+        throw std::runtime_error(name + "[" + key + "]->" +
+                                 std::string(e.what()));
+      }
     }
     return obj;
   }
@@ -72,8 +78,17 @@ public:
     return size;
   }
 
-  std::any get() override { throw std::runtime_error("Not implemented"); }
-  std::any get(std::string key) { return fields[key]->get(); }
+  std::any get() override {
+    throw std::runtime_error("Struct: Not implemented");
+  }
+  std::any get(std::string key) {
+    try {
+      return fields[key]->get();
+    } catch (std::runtime_error &e) {
+      throw std::runtime_error(name + "[" + key + "]->" +
+                               std::string(e.what()));
+    }
+  }
 
   std::weak_ptr<Base> get_field(std::string key) override {
     if (key == "_") {

@@ -6,6 +6,28 @@
 
 using namespace etcetera;
 
+TEST_CASE("Rebuild parse") {
+  auto s = Struct::create(Field("a", Int32sl::create()),
+                          Field("b", Rebuild::create(
+                                         [](std::weak_ptr<Base>) {
+                                           return std::make_any<int32_t>(456);
+                                         },
+                                         Int32sl::create())));
+
+  int32_t a = 123;
+  int32_t b = 456;
+
+  std::stringstream orig;
+  orig.write(reinterpret_cast<const char *>(&a), sizeof(int32_t));
+  orig.write(reinterpret_cast<const char *>(&b), sizeof(int32_t));
+  s->parse(orig);
+  REQUIRE(s->get<int32_t>("a") == a);
+  REQUIRE(s->get<int32_t>("b") == b);
+  REQUIRE(s->get_parsed<int32_t>("a") == a);
+  REQUIRE(s->get_parsed<int32_t>("b") == b);
+  REQUIRE(orig.peek() == EOF);
+}
+
 TEST_CASE("Rebuild static") {
   auto s = Struct::create(Field("a", Int32sl::create()),
                           Field("b", Rebuild::create(

@@ -39,6 +39,12 @@ public:
   size_t get_ptr_size(std::weak_ptr<Base>) override { return sub->get_size(); }
 
   std::any get() override { return sub->get(); }
+  std::weak_ptr<Base> get_field(size_t key) override {
+    return lock(this->parent)->get_field(key);
+  }
+  std::weak_ptr<Base> get_field(std::string key) override {
+    return lock(this->parent)->get_field(key);
+  }
 
   std::any parse(std::istream &s) override {
     offset = offset_fn(this->parent);

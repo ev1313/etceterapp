@@ -64,15 +64,19 @@ public:
 
   std::any parse(std::istream &stream) override {
     if (size_fn) {
-      size = size_fn(weak_from_this());
+      size = size_fn(this->parent);
     }
     data.clear();
+    spdlog::info("Array::parsing {} {:02X} {}", name, (size_t)stream.tellg(),
+                 size);
     for (size_t i = 0; i < size; i++) {
       auto obj = type_constructor();
       obj->set_parent(weak_from_this());
       obj->set_idx(i);
       data.push_back(obj);
       try {
+        spdlog::info("Array::itemparse {} {:02X} {}", name,
+                     (size_t)stream.tellg(), i);
         data.back()->parse(stream);
       } catch (std::runtime_error &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
@@ -95,8 +99,12 @@ public:
     }
   }
 
-  std::any get() override { throw std::runtime_error("Not implemented"); }
+  std::any get() override {
+    throw std::runtime_error("Array->get(): Not implemented");
+  }
   std::any get(size_t key) override { return data[key]->get(); }
+
+  size_t length() override { return data.size(); }
 
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 
@@ -203,6 +211,8 @@ public:
                                          m_type_constructor, nullptr);
   }
 
+  size_t length() override { return data.size(); }
+
   size_t get_offset(size_t key) {
     size_t ret = get_offset();
     assert(key < data.size());
@@ -210,7 +220,8 @@ public:
       try {
         ret += data[i]->get_size();
       } catch (std::runtime_error &e) {
-        throw std::runtime_error(key + "->" + std::string(e.what()));
+        throw std::runtime_error(name + "[" + std::to_string(key) + "]->" +
+                                 std::string(e.what()));
       }
     }
     return ret;
@@ -239,7 +250,7 @@ public:
 
     int64_t opt_size = 0;
     if (size_fn) {
-      opt_size = (int64_t)size_fn(weak_from_this());
+      opt_size = (int64_t)size_fn(this->parent);
     }
 
     auto check_size = [&]() -> bool {
@@ -261,7 +272,7 @@ public:
           break;
         }
       } catch (std::runtime_error &e) {
-        throw std::runtime_error(std::to_string(i) + "->" +
+        throw std::runtime_error(name + "[" + std::to_string(i) + "]->" +
                                  std::string(e.what()));
       }
     }
