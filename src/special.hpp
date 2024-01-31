@@ -53,11 +53,12 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
-    child->parse_xml(node, name, is_root);
+    //child->parse_xml(node, name, is_root);
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
-    return child->build_xml(parent, name);
+    return parent;
+    //child->build_xml(parent, name);
   }
 };
 

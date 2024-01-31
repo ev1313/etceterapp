@@ -154,6 +154,7 @@ public:
       data.push_back(sub);
     }
 
+    spdlog::debug("Area::parse assert {} {}", (size_t)stream.tellg(), end_pos);
     assert(stream.tellg() == end_pos);
 
     stream.seekg(old_offset);

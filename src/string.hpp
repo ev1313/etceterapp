@@ -51,6 +51,19 @@ public:
     return (s.length() + 1) * sizeof(typename TStringType::value_type);
   }
 
+  size_t length() override {
+    TStringType s;
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      s = Utf32To16(Utf8To32(this->value));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      s = Utf8To32(this->value);
+    } else {
+      s = this->value;
+    }
+    return s.length();
+  }
+
   std::any parse(std::istream &stream) override {
     union {
       typename TStringType::value_type c;
@@ -136,6 +149,19 @@ public:
       assert(size % sizeof(char32_t) == 0);
     }
     return size;
+  }
+
+  size_t length() override {
+    TStringType s;
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      s = Utf32To16(Utf8To32(this->value));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      s = Utf8To32(this->value);
+    } else {
+      s = this->value;
+    }
+    return s.length();
   }
 
   std::any parse(std::istream &stream) override {
