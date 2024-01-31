@@ -34,6 +34,10 @@ public:
   void set_name(std::string name) { this->name = name; }
   void set_idx(size_t idx) { this->idx = idx; }
 
+  virtual std::vector<std::string> get_names() {
+    return {name};
+  }
+
   Base(PrivateBase) {}
   virtual std::any parse(std::istream &stream) = 0;
   virtual void build(std::ostream &stream) = 0;
@@ -307,6 +311,7 @@ public:
 
   void build(std::ostream &stream) override {
     assert(value.size() == size);
+    spdlog::debug("Bytes {:02X} {} write", (size_t)stream.tellp(), value.size());
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
   }
 
@@ -323,7 +328,8 @@ public:
 
     for (size_t i = 0; i < size; i++) {
       std::string tmp = attr.substr(i * 2, 2);
-      value[i] = std::stoi(tmp, nullptr, 16);
+      value[i] = std::stoll(tmp, nullptr, 16);
+      spdlog::debug("Bytes::parse_xml reading {} {} {}", i, tmp, value[i]);
     }
   }
 

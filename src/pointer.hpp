@@ -140,10 +140,17 @@ public:
     stream.seekg(offset);
 
     int64_t end_pos = offset + size;
+    size_t i = 0;
     while (stream.tellg() < end_pos && stream.tellg() >= 0) {
       auto sub = type_fn();
       sub->set_parent(this->shared_from_this());
-      sub->parse(stream);
+      try {
+        sub->parse(stream);
+        i+=1;
+      } catch (std::exception &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+            std::string(e.what()));
+      }
       data.push_back(sub);
     }
 
@@ -159,8 +166,15 @@ public:
     size_t old_offset = stream.tellp();
     stream.seekp(offset);
 
+    size_t i = 0;
     for (auto &sub : data) {
-      sub->build(stream);
+      try {
+        sub->build(stream);
+        i+=1;
+      } catch (std::exception &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+            std::string(e.what()));
+      }
     }
 
     int64_t test_pos = offset + get_ptr_size(this->parent);
@@ -171,21 +185,37 @@ public:
   }
 
   void parse_xml(pugi::xml_node const &node, std::string name,
-                 bool is_root) override {
-    auto arr = is_root ? node : node.child(name.c_str());
+                 bool) override {
+    // TODO: do we need is_root here? probably not.
+    spdlog::debug("Area::parse_xml {}", name);
     size_t i = 0;
-    for (auto &child_node : arr.children(name.c_str())) {
-      if (i >= data.size()) {
-        throw cpptrace::runtime_error("Array: " + name +
-                                 "too many elements in XML found!");
+    data.clear();
+    for (auto &child_node : node.children(name.c_str())) {
+      spdlog::debug("Area::parse_xml {} {}", name, i);
+      auto obj = type_fn();
+      obj->set_parent(weak_from_this());
+      obj->set_idx(i);
+      data.push_back(obj);
+      try {
+        data[i]->parse_xml(child_node, name, true);
+        i+=1;
+      } catch (std::exception &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+            std::string(e.what()));
       }
-      data[i]->parse_xml(child_node, name, true);
     }
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    size_t i = 0;
     for (auto &obj : data) {
-      obj->build_xml(parent, name);
+      try {
+        obj->build_xml(parent, name);
+        i+=1;
+      } catch (std::exception &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+            std::string(e.what()));
+      }
     }
     return parent;
   }

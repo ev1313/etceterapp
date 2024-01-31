@@ -123,7 +123,7 @@ NDFObject = Struct(
 
   using NDFField = Switch<uint32_t>::SwitchField;
   auto NDFType = []() { return LazyBound::create([](std::weak_ptr<LazyBound> p) {
-    spdlog::info("NDFType");
+    //spdlog::info("NDFType");
     return Struct::create(
         Field("typeId", Int32ul::create()),
         Field(
@@ -361,11 +361,11 @@ NDFObject = Struct(
 
   auto NDFProperty = [NDFType]() {
     return Struct::create(Field("propertyIndex", Int32ul::create()),
-                          Field("value", IfThenElse::create(
+                          Field("NDFType", IfThenElse::create(
                               [](std::weak_ptr<Base> c) {
                                 return lock(c)->get<uint32_t>(
                                     "propertyIndex") !=
-                                    0xABABABAB;
+                                    0xABABABABU;
                               },
                               Field("NDFType", NDFType())//
                           )));
@@ -374,11 +374,11 @@ NDFObject = Struct(
   auto NDFObject = [NDFProperty]() {
     return Struct::create(
         Field("classIndex", Int32ul::create()),
-        Field("properties",
+        Field("Property",
               RepeatUntil::create(
                   [](std::weak_ptr<Base> obj, std::weak_ptr<Base>) -> bool {
                     return lock(obj)->get<uint32_t>("propertyIndex") ==
-                        0xABABABAB;
+                        0xABABABABU;
                   },
                   NDFProperty)));
   };
@@ -395,7 +395,7 @@ NDFObject = Struct(
       Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("size", Int32ul::create()),
       Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
-      Field("objects", Area::create(
+      Field("Object", Area::create(
           [](std::weak_ptr<Base> c) {
             return lock(c)->get<uint32_t>("offset");
           },

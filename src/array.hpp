@@ -133,17 +133,18 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
-    assert(false);
-    //FIXME: this does not work
-    auto arr = is_root ? node : node.child(name.c_str());
+    spdlog::debug("Array::parse_xml {}", name);
     size_t i = 0;
-    for (auto &child_node : arr.children(name.c_str())) {
-      if (i >= data.size()) {
-        throw cpptrace::runtime_error("Array: " + name +
-            "too many elements in XML found!");
-      }
+    data.clear();
+    for (auto &child_node : node.children(name.c_str())) {
+      spdlog::debug("Array::parse_xml {} {}", name, i);
+      auto obj = type_constructor();
+      obj->set_parent(weak_from_this());
+      obj->set_idx(i);
+      data.push_back(obj);
       try {
         data[i]->parse_xml(child_node, name, true);
+        i+=1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
             std::string(e.what()));
@@ -303,10 +304,11 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
-    auto arr = is_root ? node : node.child(name.c_str());
+    spdlog::debug("RepeatUntil::parse_xml {}", name);
     size_t i = 0;
     data.clear();
-    for (auto &child_node : arr.children(name.c_str())) {
+    for (auto &child_node : node.children(name.c_str())) {
+      spdlog::debug("RepeatUntil::parse_xml {} {}", name, i);
       auto obj = type_constructor();
       obj->set_parent(weak_from_this());
       obj->set_idx(i);

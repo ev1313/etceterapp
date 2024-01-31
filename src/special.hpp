@@ -89,12 +89,21 @@ public:
     return child->get_field(key);
   };
 
+  std::vector<std::string> get_names() override {
+    // FIXME: hack
+    child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
+    child->set_parent(weak_from_this());
+    child->set_name(name);
+    return child->get_names();
+  }
+
   FLazyFn get_lazy_fn() { return lazy_fn; }
 
   std::any parse(std::istream &stream) override {
     spdlog::info("LazyBound::parse {:02X} {}", (size_t)stream.tellg(), name);
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
     child->set_parent(weak_from_this());
+    child->set_name(name);
     return child->parse(stream);
   }
 
@@ -102,8 +111,10 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
+    spdlog::debug("Lazybound parsing {}", name);
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
     child->set_parent(weak_from_this());
+    child->set_name(name);
     return child->parse_xml(node, name, is_root);
   }
 

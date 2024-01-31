@@ -17,7 +17,7 @@ public:
   Struct(PrivateBase, Args &&...args) : Base(PrivateBase()) {
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
                     std::get<1>(std::forward<Args>(args))),
-     ...);
+        ...);
   }
   template <typename... Args>
   static std::shared_ptr<Struct> create(Args &&...args) {
@@ -40,7 +40,7 @@ public:
         obj.emplace(key, value);
       } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + key + "]->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     return obj;
@@ -49,7 +49,12 @@ public:
   void build(std::ostream &stream) override {
     for (auto &[key, field] : fields) {
       spdlog::debug("Struct::build_xml {} {}", (size_t)stream.tellp(), key);
-      field->build(stream);
+      try {
+        field->build(stream);
+      } catch (std::exception &e) {
+        throw std::runtime_error(name + "[" + key + "]->" +
+            std::string(e.what()));
+      }
     }
   }
 
@@ -87,7 +92,7 @@ public:
       return fields[key]->get();
     } catch (std::exception &e) {
       throw std::runtime_error(name + "[" + key + "]->" +
-                               std::string(e.what()));
+          std::string(e.what()));
     }
   }
 

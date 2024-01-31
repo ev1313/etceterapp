@@ -61,7 +61,13 @@ public:
     if(!s) {
       throw cpptrace::runtime_error("NumberType::parse_xml " + name + " not found");
     }
-    value = s.as_int();
+    if constexpr (std::is_floating_point<TNumberType>::value) {
+      value = s.as_double();
+    } else if constexpr (std::is_signed<TNumberType>::value) {
+      value = s.as_llong();
+    } else {
+      value = s.as_ullong();
+    }
     spdlog::debug("NumberType::parse_xml {} {}",
                   name, value);
   }
