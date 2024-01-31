@@ -15,6 +15,8 @@
 #include <pugixml.hpp>
 #include <spdlog/spdlog.h>
 
+#include <cpptrace/cpptrace.hpp>
+
 namespace etcetera {
 
 class Base : public std::enable_shared_from_this<Base> {
@@ -64,17 +66,17 @@ public:
    * Only for Pointers, returns the offset of the pointer data.
    * */
   virtual size_t get_ptr_offset(std::weak_ptr<Base>) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   }
   /*
    * Only for Pointers, returns the size of the pointer data.
    * */
   virtual size_t get_ptr_size(std::weak_ptr<Base>) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   }
 
   virtual size_t length() {
-    throw std::runtime_error("length: Not implemented name: " + name +
+    throw cpptrace::runtime_error("length: Not implemented name: " + name +
                              " idx: " + std::to_string(idx));
   }
 
@@ -83,14 +85,14 @@ public:
    * cases.
    * */
   virtual std::weak_ptr<Base> get_field(std::string key) {
-    throw std::runtime_error("get_field(" + key + "): Not implemented name: " +
+    throw cpptrace::runtime_error("get_field(" + key + "): Not implemented name: " +
                              name + " idx: " + std::to_string(idx));
   };
   template <typename T> std::weak_ptr<T> get_field(std::string key) {
     return static_pointer_cast<T>(get_field(key));
   }
   virtual std::weak_ptr<Base> get_field(size_t key) {
-    throw std::runtime_error("get_field(" + std::to_string(key) +
+    throw cpptrace::runtime_error("get_field(" + std::to_string(key) +
                              "): Not implemented name: " + name +
                              " idx: " + std::to_string(idx));
   };
@@ -111,14 +113,14 @@ public:
   virtual std::any get() = 0;
   template <typename T> T get() { return std::any_cast<T>(get()); }
   virtual std::any get(std::string) {
-    throw std::runtime_error("get: Not implemented name: " + name +
+    throw cpptrace::runtime_error("get: Not implemented name: " + name +
                              " idx: " + std::to_string(idx));
   };
   template <typename T> T get(std::string key) {
     return std::any_cast<T>(get(key));
   }
   virtual std::any get(size_t) {
-    throw std::runtime_error("get: Not implemented name: " + name +
+    throw cpptrace::runtime_error("get: Not implemented name: " + name +
                              " idx: " + std::to_string(idx));
   };
   template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
@@ -137,7 +139,7 @@ public:
     return std::any_cast<T>(get_parsed(key));
   }
   virtual std::any get_parsed(size_t) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   };
   template <typename T> T get_parsed(size_t key) {
     return std::any_cast<T>(get_parsed(key));
@@ -155,15 +157,15 @@ public:
       } else if (lock(parent)->is_struct()) {
         return lock(parent)->get_offset(name);
       }
-      throw std::runtime_error("Base: parent is not array or struct!");
+      throw cpptrace::runtime_error("Base: parent is not array or struct!");
     }
     return 0;
   }
   virtual size_t get_offset(std::string) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   };
   virtual size_t get_offset(size_t) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   }
   template <typename K, typename K2, typename... Ts>
   size_t get_offset(K key, K2 key2, Ts &&...args) {
@@ -171,14 +173,14 @@ public:
     return lock(field)->get_offset(key2, args...);
   }
 
-  virtual void set(std::any) { throw std::runtime_error("Not implemented"); }
+  virtual void set(std::any) { throw cpptrace::runtime_error("Not implemented"); }
 
   virtual void parse_xml(pugi::xml_node const &, std::string, bool) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   }
 
   virtual pugi::xml_node build_xml(pugi::xml_node &, std::string) {
-    throw std::runtime_error("Not implemented");
+    throw cpptrace::runtime_error("Not implemented");
   }
 };
 
@@ -239,7 +241,7 @@ public:
     tmp.resize(value.length());
     stream.read(reinterpret_cast<char *>(tmp.data()), tmp.length());
     if (tmp != value) {
-      throw std::runtime_error("BytesConst @" + std::to_string(stream.tellg()) +
+      throw cpptrace::runtime_error("BytesConst @" + std::to_string(stream.tellg()) +
                                ": expected " + value + ", got " + tmp);
     }
     return value;
@@ -312,7 +314,7 @@ public:
     get_size();
     std::string attr = node.attribute(name.c_str()).as_string();
     if (attr.length() != size * 2) {
-      throw std::runtime_error("Bytes: expected " + std::to_string(size * 2) +
+      throw cpptrace::runtime_error("Bytes: expected " + std::to_string(size * 2) +
                                " characters, got " +
                                std::to_string(attr.length()));
     }

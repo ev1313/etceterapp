@@ -40,7 +40,7 @@ public:
     for (size_t i = 0; i < key; i++) {
       try {
         ret += data[i]->get_size();
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }
     }
@@ -54,9 +54,9 @@ public:
       try {
         s += obj->get_size();
         i += 1;
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     return s;
@@ -78,9 +78,9 @@ public:
         spdlog::info("Array::itemparse {} {:02X} {}", name,
                      (size_t)stream.tellg(), i);
         data.back()->parse(stream);
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     return data;
@@ -92,15 +92,15 @@ public:
       try {
         obj->build(stream);
         i += 1;
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
   }
 
   std::any get() override {
-    throw std::runtime_error("Array->get(): Not implemented");
+    throw cpptrace::runtime_error("Array->get(): Not implemented");
   }
   std::any get(size_t key) override { return data[key]->get(); }
 
@@ -133,18 +133,20 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
+    assert(false);
+    //FIXME: this does not work
     auto arr = is_root ? node : node.child(name.c_str());
     size_t i = 0;
     for (auto &child_node : arr.children(name.c_str())) {
       if (i >= data.size()) {
-        throw std::runtime_error("Array: " + name +
-                                 "too many elements in XML found!");
+        throw cpptrace::runtime_error("Array: " + name +
+            "too many elements in XML found!");
       }
       try {
         data[i]->parse_xml(child_node, name, true);
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
   }
@@ -155,9 +157,9 @@ public:
       try {
         obj->build_xml(parent, name);
         i += 1;
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     return parent;
@@ -219,9 +221,9 @@ public:
     for (size_t i = 0; i < key; i++) {
       try {
         ret += data[i]->get_size();
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + std::to_string(key) + "]->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     return ret;
@@ -234,9 +236,9 @@ public:
       try {
         s += obj->get_size();
         i += 1;
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     return s;
@@ -271,13 +273,13 @@ public:
         if (repeat_fn(data.back(), this->parent)) {
           break;
         }
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + std::to_string(i) + "]->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
     if (size_fn && (stream.tellg() > (before_offset + opt_size))) {
-      throw std::runtime_error("RepeatUntil: size limit exceeded!");
+      throw cpptrace::runtime_error("RepeatUntil: size limit exceeded!");
     }
     return data;
   }
@@ -288,16 +290,50 @@ public:
       try {
         obj->build(stream);
         i += 1;
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-                                 std::string(e.what()));
+            std::string(e.what()));
       }
     }
   }
 
-  std::any get() override { throw std::runtime_error("Not implemented"); }
+  std::any get() override { throw cpptrace::runtime_error("Not implemented"); }
   std::any get(size_t key) override { return data[key]->get(); }
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
+
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
+    auto arr = is_root ? node : node.child(name.c_str());
+    size_t i = 0;
+    data.clear();
+    for (auto &child_node : arr.children(name.c_str())) {
+      auto obj = type_constructor();
+      obj->set_parent(weak_from_this());
+      obj->set_idx(i);
+      data.push_back(obj);
+      try {
+        data[i]->parse_xml(child_node, name, true);
+        i+=1;
+      } catch (std::exception &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+            std::string(e.what()));
+      }
+    }
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    size_t i = 0;
+    for (auto &obj : data) {
+      try {
+        obj->build_xml(parent, name);
+        i += 1;
+      } catch (std::exception &e) {
+        throw std::runtime_error(std::to_string(i) + "->" +
+            std::string(e.what()));
+      }
+    }
+    return parent;
+  }
 };
 
 } // namespace etcetera

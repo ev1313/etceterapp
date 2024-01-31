@@ -27,6 +27,12 @@ public:
     spdlog::info("Rebuild::get_parsed {}", name);
     return child->get();
   }
+  size_t get_offset(std::string key) override {
+    return lock(this->parent)->get_offset(key);
+  }
+  size_t get_offset(size_t key) override {
+    return lock(this->parent)->get_offset(key);
+  }
 
   bool is_struct() override { return child->is_struct(); }
   bool is_array() override { return child->is_array(); }
@@ -43,6 +49,15 @@ public:
     auto data = this->get();
     child->set(data);
     child->build(stream);
+  }
+
+  void parse_xml(pugi::xml_node const &node, std::string name,
+                 bool is_root) override {
+    child->parse_xml(node, name, is_root);
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+    return child->build_xml(parent, name);
   }
 };
 
@@ -145,7 +160,7 @@ public:
       alignment = alignment_fn.value()(this->parent);
     }
     if (alignment < 2) {
-      throw std::runtime_error("Alignment must be at least 2");
+      throw cpptrace::runtime_error("Alignment must be at least 2");
     }
     size_t before_offset = stream.tellg();
     auto ret = child->parse(stream);

@@ -10,6 +10,14 @@ set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
+include(FetchContent)
+FetchContent_Declare(
+        cpptrace
+        GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
+        GIT_TAG        v0.3.1
+)
+FetchContent_MakeAvailable(cpptrace)
+
 find_package(argparse REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)
@@ -35,7 +43,7 @@ endif ()
 #configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/version.h)
 
 add_library(etceterapp INTERFACE)
-target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml tsl::ordered_map)
+target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml tsl::ordered_map cpptrace::cpptrace)
 target_include_directories(etceterapp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_executable(tests

@@ -38,7 +38,7 @@ public:
         spdlog::info("Struct::parse {:02X} {}", (size_t)stream.tellg(), key);
         std::any value = field->parse(stream);
         obj.emplace(key, value);
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + key + "]->" +
                                  std::string(e.what()));
       }
@@ -48,6 +48,7 @@ public:
 
   void build(std::ostream &stream) override {
     for (auto &[key, field] : fields) {
+      spdlog::debug("Struct::build_xml {} {}", (size_t)stream.tellp(), key);
       field->build(stream);
     }
   }
@@ -62,7 +63,7 @@ public:
       }
       ret += field->get_size();
     }
-    throw std::runtime_error("Struct: " + key + " not found!");
+    throw cpptrace::runtime_error("Struct: " + key + " not found!");
     return 0;
   }
 
@@ -71,7 +72,7 @@ public:
     for (auto &[key, field] : fields) {
       try {
         size += field->get_size();
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }
     }
@@ -79,12 +80,12 @@ public:
   }
 
   std::any get() override {
-    throw std::runtime_error("Struct: Not implemented");
+    throw cpptrace::runtime_error("Struct: Not implemented");
   }
   std::any get(std::string key) {
     try {
       return fields[key]->get();
-    } catch (std::runtime_error &e) {
+    } catch (std::exception &e) {
       throw std::runtime_error(name + "[" + key + "]->" +
                                std::string(e.what()));
     }
@@ -103,8 +104,9 @@ public:
     auto s = is_root ? node : node.child(name.c_str());
     for (auto &[key, field] : fields) {
       try {
+        spdlog::debug("Struct::parse_xml {}", key);
         field->parse_xml(s, key, false);
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }
     }
@@ -115,7 +117,7 @@ public:
     for (auto &[key, field] : fields) {
       try {
         field->build_xml(s, key);
-      } catch (std::runtime_error &e) {
+      } catch (std::exception &e) {
         throw std::runtime_error(key + "->" + std::string(e.what()));
       }
     }

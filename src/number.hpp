@@ -44,6 +44,8 @@ public:
       }
       val = bswap.value;
     }
+    spdlog::debug("NumberType::build {:02X} {} {}", (size_t)stream.tellp(),
+                  name, val);
     stream.write(reinterpret_cast<char *>(&val), sizeof(val));
   }
   std::any get() override { return value; }
@@ -56,7 +58,12 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     auto s = node.attribute(name.c_str());
+    if(!s) {
+      throw cpptrace::runtime_error("NumberType::parse_xml " + name + " not found");
+    }
     value = s.as_int();
+    spdlog::debug("NumberType::parse_xml {} {}",
+                  name, value);
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {

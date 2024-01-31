@@ -131,7 +131,7 @@ public:
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
-    if (!if_fn(this->parent)) {
+    if (if_fn(this->parent)) {
       if (!if_child) {
         return parent;
       }

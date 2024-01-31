@@ -112,7 +112,7 @@ public:
 
   bool is_pointer_type() override { return true; }
 
-  std::any get() override { throw std::runtime_error("Not implemented"); }
+  std::any get() override { throw cpptrace::runtime_error("Not implemented"); }
   std::any get(size_t key) override { return data[key]->get(); }
 
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
@@ -176,7 +176,7 @@ public:
     size_t i = 0;
     for (auto &child_node : arr.children(name.c_str())) {
       if (i >= data.size()) {
-        throw std::runtime_error("Array: " + name +
+        throw cpptrace::runtime_error("Array: " + name +
                                  "too many elements in XML found!");
       }
       data[i]->parse_xml(child_node, name, true);

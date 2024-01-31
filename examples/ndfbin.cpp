@@ -20,6 +20,12 @@ int main(int argc, char **argv) {
   argparse::ArgumentParser program("ndfbin");
   program.add_argument("input").help("Input file");
   program.add_argument("output").help("Output folder");
+  program.add_argument("-v", "--verbose")
+      .default_value(false)
+      .implicit_value(true)
+      .help("Verbose output");
+  program.add_argument("-p", "--pack").default_value(false).implicit_value(true).help("instead of parsing the input file, pack the input xml file into a ndfbin file");
+
 
   try {
     program.parse_args(argc, argv);
@@ -27,6 +33,12 @@ int main(int argc, char **argv) {
     std::cout << err.what() << std::endl;
     std::cout << program;
     exit(1);
+  }
+
+  if(!program.get<bool>("-v")) {
+    spdlog::set_level(spdlog::level::warn);
+  } else {
+    spdlog::set_level(spdlog::level::debug);
   }
   /*
 
@@ -110,7 +122,7 @@ NDFObject = Struct(
    */
 
   using NDFField = Switch<uint32_t>::SwitchField;
-  auto NDFType = LazyBound::create([](std::weak_ptr<LazyBound> p) {
+  auto NDFType = []() { return LazyBound::create([](std::weak_ptr<LazyBound> p) {
     spdlog::info("NDFType");
     return Struct::create(
         Field("typeId", Int32ul::create()),
@@ -227,8 +239,8 @@ NDFObject = Struct(
                          [p]() {
                            return Struct::create(
                                Field("Matrix", Array::create(16, []() {
-                                       return Float32l::create();
-                                     })));
+                                 return Float32l::create();
+                               })));
                          }),
                 NDFField(0x00000011, "List",
                          [p]() {
@@ -237,7 +249,7 @@ NDFObject = Struct(
                                      Rebuild::create(
                                          [](std::weak_ptr<Base> c) -> uint32_t {
                                            return lock(lock(c)->get_field(
-                                                           "items"))
+                                               "items"))
                                                ->length();
                                          },
                                          Int32ul::create())),
@@ -260,7 +272,7 @@ NDFObject = Struct(
                                 Rebuild::create(
                                     [](std::weak_ptr<Base> c) -> uint32_t {
                                       return lock(
-                                                 lock(c)->get_field("mapitems"))
+                                          lock(c)->get_field("mapitems"))
                                           ->length();
                                     },
                                     Int32ul::create())),
@@ -319,26 +331,44 @@ NDFObject = Struct(
                            return Struct::create(
                                Field("data", Bytes::create(8)));
                          }),
+                NDFField(0x0000001F, "S32_vec2",
+                         [p]() {
+                           return Struct::create(Field("x", Int32sl::create()),
+                                                 Field("y", Int32sl::create()));
+                         }),
+                NDFField(0x00000021, "F32_vec2",
+                         [p]() {
+                           return Struct::create(
+                               Field("x", Float32l::create()),
+                               Field("y", Float32l::create()));
+                         }),
                 NDFField(0x00000022, "Pair",
                          [p]() {
                            return Struct::create(
                                Field("first",
                                      LazyBound::create(lock(p)->get_lazy_fn())),
                                Field("second", LazyBound::create(
-                                                   lock(p)->get_lazy_fn())));
+                                   lock(p)->get_lazy_fn())));
+                         }),
+                NDFField(0x00000025, "Hash",
+                         [p]() {
+                           return Struct::create(
+                               Field("hash", Bytes::create(16)));
                          }) //
-                )));
+            )));
   });
+  };
 
   auto NDFProperty = [NDFType]() {
     return Struct::create(Field("propertyIndex", Int32ul::create()),
                           Field("value", IfThenElse::create(
-                                             [](std::weak_ptr<Base> c) {
-                                               return lock(c)->get<uint32_t>(
-                                                          "propertyIndex") !=
-                                                      0xABABABAB;
-                                             },
-                                             Field("NDFType", NDFType))));
+                              [](std::weak_ptr<Base> c) {
+                                return lock(c)->get<uint32_t>(
+                                    "propertyIndex") !=
+                                    0xABABABAB;
+                              },
+                              Field("NDFType", NDFType())//
+                          )));
   };
 
   auto NDFObject = [NDFProperty]() {
@@ -348,7 +378,7 @@ NDFObject = Struct(
               RepeatUntil::create(
                   [](std::weak_ptr<Base> obj, std::weak_ptr<Base>) -> bool {
                     return lock(obj)->get<uint32_t>("propertyIndex") ==
-                           0xABABABAB;
+                        0xABABABAB;
                   },
                   NDFProperty)));
   };
@@ -357,26 +387,27 @@ NDFObject = Struct(
       Field("magic", BytesConst::create("OBJE"s)),
       Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("offset", Rebuild::create(
-                          [](std::weak_ptr<Base> c) {
-                            return std::make_any<uint32_t>(
-                                lock(c)->get<uint32_t>("_", "_", "headerSize"));
-                          },
-                          Int32ul::create())),
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get<uint32_t>("_", "_", "headerSize"));
+          },
+          Int32ul::create())),
       Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("size", Int32ul::create()),
       Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("objects", Area::create(
-                           [](std::weak_ptr<Base> c) {
-                             return lock(c)->get<uint32_t>("offset");
-                           },
-                           [](std::weak_ptr<Base> c) {
-                             return lock(c)->get<uint32_t>("size");
-                           },
-                           NDFObject)));
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get<uint32_t>("offset");
+          },
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get<uint32_t>("size");
+          },
+          NDFObject)));
 
   auto TOC0Header = Struct::create(
       Field("magic", BytesConst::create("TOC0"s)),
-      Field("tableCount", Const<uint32_t>::create(9)), Field("OBJE", OBJETable)
+      Field("tableCount", Const<uint32_t>::create(9)), //
+      Field("OBJE", OBJETable)
       // Field("TOPO", TOPOTable),
       // Field("CHNK", CHNKTable),
       // Field("CLAS", CLASTable),
@@ -394,32 +425,39 @@ NDFObject = Struct(
       Field("compressed", Int32ul::create()),
       Field("toc0offset", Int32ul::create()),
       Field("unk0", BytesConst::create("\x00\x00\x00\x00"s)),
-      Field("headerSize",
-            Rebuild::create(
-                [](std::weak_ptr<Base> c) {
-                  return std::make_any<uint32_t>(
-                      lock(lock(c)->get_field<Int32ul>("uncompressedSize"))
-                          ->get_offset());
-                },
-                Int32ul::create())),
+      Field("headerSize", Rebuild::create(
+          [](std::weak_ptr<Base>) {
+            return std::make_any<uint32_t>(40);
+          },
+          Int32ul::create())),
       Field("unk2", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("size", Int32ul::create()),
       Field("unk4", BytesConst::create("\x00\x00\x00\x00"s)),
       Field("uncompressedSize", Int32ul::create()),
       Field("toc0header", Pointer::create(
-                              [](std::weak_ptr<Base> c) {
-                                return lock(c)->get<uint32_t>("toc0offset");
-                              },
-                              TOC0Header)));
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get<uint32_t>("toc0offset");
+          },
+          TOC0Header))//
+  );
 
-  std::ifstream input;
-  input.open(program.get("input"), std::ios::binary);
-  NdfBin->parse(input);
+  if(!program.get<bool>("-p")) {
+    std::ifstream input;
+    input.open(program.get("input"), std::ios::binary);
+    NdfBin->parse(input);
 
-  spdlog::info("compressed: {}", NdfBin->get<uint32_t>("compressed"));
-  spdlog::info("toc0offset: {}", NdfBin->get<uint32_t>("toc0offset"));
-  spdlog::info("headerSize: {}", NdfBin->get<uint32_t>("headerSize"));
-  spdlog::info("size: {}", NdfBin->get<uint32_t>("size"));
-  spdlog::info("uncompressedSize: {}",
-               NdfBin->get<uint32_t>("uncompressedSize"));
+    pugi::xml_document doc;
+    auto root = doc.append_child("root");
+    NdfBin->build_xml(root, "NdfBin");
+    std::string outpath = program.get("output") + "/ndfbin.xml";
+    doc.save_file(outpath.c_str());
+  } else {
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(program.get("input").c_str());
+    spdlog::debug("Load result: {}", result.description());
+    NdfBin->parse_xml(doc.child("root").child("NdfBin"), "NdfBin", true);
+
+    std::ofstream ofs(program.get("output") + "/ndfbin.bin", std::ios::binary);
+    NdfBin->build(ofs);
+  }
 }
