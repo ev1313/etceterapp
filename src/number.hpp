@@ -27,8 +27,8 @@ public:
       }
       value = bswap.value;
     }
-    spdlog::info("NumberType::parse {:02X} {} {}", (size_t)stream.tellg(), name,
-                 value);
+    spdlog::debug("NumberType::parse {:02X} {} {}", (size_t)stream.tellg(),
+                  name, value);
     return value;
   }
   void build(std::ostream &stream) override {
@@ -58,8 +58,9 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     auto s = node.attribute(name.c_str());
-    if(!s) {
-      throw cpptrace::runtime_error("NumberType::parse_xml " + name + " not found");
+    if (!s) {
+      throw cpptrace::runtime_error("NumberType::parse_xml " + name +
+                                    " not found");
     }
     if constexpr (std::is_floating_point<TNumberType>::value) {
       value = s.as_double();
@@ -68,8 +69,7 @@ public:
     } else {
       value = s.as_ullong();
     }
-    spdlog::debug("NumberType::parse_xml {} {}",
-                  name, value);
+    spdlog::debug("NumberType::parse_xml {} {}", name, value);
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {

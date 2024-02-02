@@ -77,10 +77,10 @@ public:
   std::vector<std::string> get_names() override {
     std::vector<std::string> ret;
 
-    if(if_child) {
+    if (if_child) {
       ret.push_back(if_child.value().first);
     }
-    if(else_child) {
+    if (else_child) {
       ret.push_back(else_child.value().first);
     }
 
@@ -127,7 +127,7 @@ public:
           if_child.value().second->build(stream);
         } catch (std::exception &e) {
           throw std::runtime_error(if_child.value().first + "->" +
-              std::string(e.what()));
+                                   std::string(e.what()));
         }
       }
     } else {
@@ -137,7 +137,7 @@ public:
           else_child.value().second->build(stream);
         } catch (std::exception &e) {
           throw std::runtime_error(else_child.value().first + "->" +
-              std::string(e.what()));
+                                   std::string(e.what()));
         }
       }
     }
@@ -148,8 +148,9 @@ public:
     std::string child_name;
     std::shared_ptr<Base> child;
     if (if_child) {
-      spdlog::debug("IfThenElse::parse_xml trying if {}", if_child.value().first);
-      for(auto &name : if_child.value().second->get_names()) {
+      spdlog::debug("IfThenElse::parse_xml trying if {}",
+                    if_child.value().first);
+      for (auto &name : if_child.value().second->get_names()) {
         spdlog::debug("IfThenElse::parse_xml trying name {}", name);
         if (node.child(name.c_str())) {
           spdlog::debug("IfThenElse::parse_xml found if {}", name);
@@ -159,8 +160,9 @@ public:
       }
     } else {
       if (else_child) {
-        spdlog::debug("IfThenElse::parse_xml trying else {}", else_child.value().first);
-        for(auto &name : else_child.value().second->get_names()) {
+        spdlog::debug("IfThenElse::parse_xml trying else {}",
+                      else_child.value().first);
+        for (auto &name : else_child.value().second->get_names()) {
           spdlog::debug("IfThenElse::parse_xml trying name {}", name);
           if (node.child(name.c_str())) {
             spdlog::debug("IfThenElse::parse_xml found else {}", name);
@@ -215,10 +217,10 @@ public:
       : Base(PrivateBase()), switch_fn(switch_fn) {
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
                     std::get<2>(std::forward<Args>(args))),
-        ...);
+     ...);
     (names.emplace(std::get<0>(std::forward<Args>(args)),
                    std::get<1>(std::forward<Args>(args))),
-        ...);
+     ...);
   }
 
   template <typename... Args>
@@ -232,7 +234,7 @@ public:
 
   std::vector<std::string> get_names() override {
     std::vector<std::string> ret;
-    for(auto &[_, value] : names) {
+    for (auto &[_, value] : names) {
       ret.push_back(value);
     }
     return ret;
@@ -244,11 +246,11 @@ public:
 
   std::any parse(std::istream &stream) override {
     value = switch_fn(this->parent);
-    spdlog::info("stream pos {:02X} reading {:02X} {}", (int64_t)stream.tellg(),
-                 value, names[value]);
+    spdlog::debug("stream pos {:02X} reading {:02X} {}",
+                  (int64_t)stream.tellg(), value, names[value]);
     if (!fields.contains(value)) {
       throw std::runtime_error("Switch: " + std::to_string(value) +
-          " not found!");
+                               " not found!");
     }
     current = fields[value]();
     current->set_parent(weak_from_this());
@@ -258,7 +260,7 @@ public:
 
   void build(std::ostream &stream) override {
     spdlog::debug("Switch::build {}", (size_t)stream.tellp());
-    if(!current) {
+    if (!current) {
       throw cpptrace::runtime_error("Switch: no current child");
     }
     current->build(stream);
@@ -269,8 +271,9 @@ public:
     spdlog::debug("Switch start");
     for (auto &[key, value] : names) {
       spdlog::debug("Switch trying {}", key);
-      // FIXME: what if the field itself is a switch? currently everything needs to be nested in a Struct anyway,
-      // so maybe just force everything to be in a Struct by default / put everything in it's own node by default?
+      // FIXME: what if the field itself is a switch? currently everything needs
+      // to be nested in a Struct anyway, so maybe just force everything to be
+      // in a Struct by default / put everything in it's own node by default?
       current = fields[key]();
       bool valid = false;
       if (current->is_simple_type()) {

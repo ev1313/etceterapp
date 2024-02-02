@@ -56,7 +56,7 @@ public:
         i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return s;
@@ -67,20 +67,20 @@ public:
       size = size_fn(this->parent);
     }
     data.clear();
-    spdlog::info("Array::parsing {} {:02X} {}", name, (size_t)stream.tellg(),
-                 size);
+    spdlog::debug("Array::parsing {} {:02X} {}", name, (size_t)stream.tellg(),
+                  size);
     for (size_t i = 0; i < size; i++) {
       auto obj = type_constructor();
       obj->set_parent(weak_from_this());
       obj->set_idx(i);
       data.push_back(obj);
       try {
-        spdlog::info("Array::itemparse {} {:02X} {}", name,
-                     (size_t)stream.tellg(), i);
+        spdlog::debug("Array::itemparse {} {:02X} {}", name,
+                      (size_t)stream.tellg(), i);
         data.back()->parse(stream);
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return data;
@@ -94,7 +94,7 @@ public:
         i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
   }
@@ -144,10 +144,10 @@ public:
       data.push_back(obj);
       try {
         data[i]->parse_xml(child_node, name, true);
-        i+=1;
+        i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
   }
@@ -160,7 +160,7 @@ public:
         i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return parent;
@@ -224,7 +224,7 @@ public:
         ret += data[i]->get_size();
       } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + std::to_string(key) + "]->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return ret;
@@ -239,7 +239,7 @@ public:
         i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return s;
@@ -276,7 +276,7 @@ public:
         }
       } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + std::to_string(i) + "]->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     if (size_fn && (stream.tellg() > (before_offset + opt_size))) {
@@ -293,7 +293,7 @@ public:
         i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
   }
@@ -315,10 +315,10 @@ public:
       data.push_back(obj);
       try {
         data[i]->parse_xml(child_node, name, true);
-        i+=1;
+        i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
   }
@@ -331,7 +331,7 @@ public:
         i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return parent;

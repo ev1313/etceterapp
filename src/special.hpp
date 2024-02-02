@@ -24,7 +24,7 @@ public:
 
   std::any get() override { return rebuild_fn(this->parent); }
   std::any get_parsed() override {
-    spdlog::info("Rebuild::get_parsed {}", name);
+    spdlog::debug("Rebuild::get_parsed {}", name);
     return child->get();
   }
   size_t get_offset(std::string key) override {
@@ -41,7 +41,7 @@ public:
   size_t get_size() override { return child->get_size(); }
 
   std::any parse(std::istream &stream) override {
-    spdlog::info("Rebuild::parse {:02X} {}", (size_t)stream.tellg(), name);
+    spdlog::debug("Rebuild::parse {:02X} {}", (size_t)stream.tellg(), name);
     return child->parse(stream);
   }
 
@@ -53,12 +53,12 @@ public:
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
-    //child->parse_xml(node, name, is_root);
+    // child->parse_xml(node, name, is_root);
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
     return parent;
-    //child->build_xml(parent, name);
+    // child->build_xml(parent, name);
   }
 };
 
@@ -101,7 +101,7 @@ public:
   FLazyFn get_lazy_fn() { return lazy_fn; }
 
   std::any parse(std::istream &stream) override {
-    spdlog::info("LazyBound::parse {:02X} {}", (size_t)stream.tellg(), name);
+    spdlog::debug("LazyBound::parse {:02X} {}", (size_t)stream.tellg(), name);
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
     child->set_parent(weak_from_this());
     child->set_name(name);

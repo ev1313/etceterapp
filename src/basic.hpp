@@ -34,9 +34,7 @@ public:
   void set_name(std::string name) { this->name = name; }
   void set_idx(size_t idx) { this->idx = idx; }
 
-  virtual std::vector<std::string> get_names() {
-    return {name};
-  }
+  virtual std::vector<std::string> get_names() { return {name}; }
 
   Base(PrivateBase) {}
   virtual std::any parse(std::istream &stream) = 0;
@@ -81,7 +79,7 @@ public:
 
   virtual size_t length() {
     throw cpptrace::runtime_error("length: Not implemented name: " + name +
-                             " idx: " + std::to_string(idx));
+                                  " idx: " + std::to_string(idx));
   }
 
   /*
@@ -89,16 +87,17 @@ public:
    * cases.
    * */
   virtual std::weak_ptr<Base> get_field(std::string key) {
-    throw cpptrace::runtime_error("get_field(" + key + "): Not implemented name: " +
-                             name + " idx: " + std::to_string(idx));
+    throw cpptrace::runtime_error("get_field(" + key +
+                                  "): Not implemented name: " + name +
+                                  " idx: " + std::to_string(idx));
   };
   template <typename T> std::weak_ptr<T> get_field(std::string key) {
     return static_pointer_cast<T>(get_field(key));
   }
   virtual std::weak_ptr<Base> get_field(size_t key) {
     throw cpptrace::runtime_error("get_field(" + std::to_string(key) +
-                             "): Not implemented name: " + name +
-                             " idx: " + std::to_string(idx));
+                                  "): Not implemented name: " + name +
+                                  " idx: " + std::to_string(idx));
   };
   template <typename T> std::weak_ptr<T> get_field(size_t key) {
     return static_pointer_cast<T>(get_field(key));
@@ -118,14 +117,14 @@ public:
   template <typename T> T get() { return std::any_cast<T>(get()); }
   virtual std::any get(std::string) {
     throw cpptrace::runtime_error("get: Not implemented name: " + name +
-                             " idx: " + std::to_string(idx));
+                                  " idx: " + std::to_string(idx));
   };
   template <typename T> T get(std::string key) {
     return std::any_cast<T>(get(key));
   }
   virtual std::any get(size_t) {
     throw cpptrace::runtime_error("get: Not implemented name: " + name +
-                             " idx: " + std::to_string(idx));
+                                  " idx: " + std::to_string(idx));
   };
   template <typename T> T get(size_t key) { return std::any_cast<T>(get(key)); }
   template <typename T, typename K, typename... Ts> T get(K key, Ts &&...args) {
@@ -177,7 +176,9 @@ public:
     return lock(field)->get_offset(key2, args...);
   }
 
-  virtual void set(std::any) { throw cpptrace::runtime_error("Not implemented"); }
+  virtual void set(std::any) {
+    throw cpptrace::runtime_error("Not implemented");
+  }
 
   virtual void parse_xml(pugi::xml_node const &, std::string, bool) {
     throw cpptrace::runtime_error("Not implemented");
@@ -245,8 +246,9 @@ public:
     tmp.resize(value.length());
     stream.read(reinterpret_cast<char *>(tmp.data()), tmp.length());
     if (tmp != value) {
-      throw cpptrace::runtime_error("BytesConst @" + std::to_string(stream.tellg()) +
-                               ": expected " + value + ", got " + tmp);
+      throw cpptrace::runtime_error("BytesConst @" +
+                                    std::to_string(stream.tellg()) +
+                                    ": expected " + value + ", got " + tmp);
     }
     return value;
   }
@@ -299,7 +301,7 @@ public:
     get_size();
     value.resize(size);
 
-    spdlog::info("Bytes {:02X} {} read", (size_t)stream.tellg(), value.size());
+    spdlog::debug("Bytes {:02X} {} read", (size_t)stream.tellg(), value.size());
     stream.read(reinterpret_cast<char *>(value.data()), value.size());
 
     std::string s;
@@ -311,7 +313,8 @@ public:
 
   void build(std::ostream &stream) override {
     assert(value.size() == size);
-    spdlog::debug("Bytes {:02X} {} write", (size_t)stream.tellp(), value.size());
+    spdlog::debug("Bytes {:02X} {} write", (size_t)stream.tellp(),
+                  value.size());
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
   }
 
@@ -319,9 +322,9 @@ public:
     get_size();
     std::string attr = node.attribute(name.c_str()).as_string();
     if (attr.length() != size * 2) {
-      throw cpptrace::runtime_error("Bytes: expected " + std::to_string(size * 2) +
-                               " characters, got " +
-                               std::to_string(attr.length()));
+      throw cpptrace::runtime_error(
+          "Bytes: expected " + std::to_string(size * 2) + " characters, got " +
+          std::to_string(attr.length()));
     }
     value.clear();
     value.resize(size);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "basic.hpp"
+#include "number.hpp"
 
 namespace etcetera {
 
@@ -209,6 +210,8 @@ public:
       }
       stream.write((char *)&c, sizeof(typename TStringType::value_type));
     }
+    spdlog::debug("PaddedString::build assert {} {} {}", this->value,
+                  (size_t)stream.tellp() - old_offset, size);
     assert(((int64_t)stream.tellp() - old_offset) <= (int64_t)size);
     for (size_t i = 0; i < size - (stream.tellp() - old_offset); i++) {
       stream.write("\0", 1);
@@ -222,5 +225,125 @@ using PaddedString32l = PaddedString<std::u32string, std::endian::little>;
 using PaddedString8b = PaddedString<std::string, std::endian::big>;
 using PaddedString16b = PaddedString<std::u16string, std::endian::big>;
 using PaddedString32b = PaddedString<std::u32string, std::endian::big>;
+
+template <typename TStringType = std::string, typename TLengthType = Int32ul,
+          std::endian Endianess = std::endian::native>
+class PascalString : public String {
+protected:
+  std::shared_ptr<TLengthType> length_type;
+
+public:
+  using Base::get;
+  using Base::get_field;
+  using Base::get_offset;
+  PascalString(Base::PrivateBase, std::shared_ptr<TLengthType> length_type)
+      : String(PrivateBase()), length_type(length_type) {}
+  static std::shared_ptr<PascalString>
+  create(std::shared_ptr<TLengthType> length_type) {
+    return std::make_shared<PascalString>(PrivateBase(), length_type);
+  }
+
+  size_t get_size() override {
+    size_t size = value.length();
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      assert(size % sizeof(char16_t) == 0);
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      assert(size % sizeof(char32_t) == 0);
+    }
+    return size;
+  }
+
+  size_t length() override {
+    TStringType s;
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      s = Utf32To16(Utf8To32(this->value));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      s = Utf8To32(this->value);
+    } else {
+      s = this->value;
+    }
+    return s.length();
+  }
+
+  std::any parse(std::istream &stream) override {
+    length_type->parse(stream);
+    size_t size = length_type->value;
+    size = size * sizeof(typename TStringType::value_type);
+
+    TStringType s;
+    union {
+      typename TStringType::value_type c;
+      char bytes[sizeof(typename TStringType::value_type)];
+    } data;
+
+    s.clear();
+    int64_t old_offset = stream.tellg();
+    while ((int64_t)stream.tellg() < (old_offset + (int64_t)size)) {
+      assert(stream.tellg() >= 0);
+      stream.read(data.bytes, sizeof(typename TStringType::value_type));
+      if constexpr (Endianess != std::endian::native) {
+        data.c = std::byteswap(data.c);
+      }
+      s.push_back(data.c);
+    }
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      this->value = Utf32To8(Utf16To32(s));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      this->value = Utf32To8(s);
+    } else {
+      this->value = s;
+    }
+    return this->value;
+  }
+  void build(std::ostream &stream) override {
+    // value is std::string so the length is in bytes even if it is utf-16 or 32
+    length_type->value = this->value.length();
+    length_type->build(stream);
+    size_t size = get_size();
+
+    TStringType s;
+    if constexpr (std::is_same<std::u16string, TStringType>()) {
+      // FIXME: this is a hack
+      s = Utf32To16(Utf8To32(this->value));
+    } else if constexpr (std::is_same<std::u32string, TStringType>()) {
+      s = Utf8To32(this->value);
+    } else {
+      s = this->value;
+    }
+    int64_t old_offset = stream.tellp();
+    for (auto &c : s) {
+      if constexpr (Endianess != std::endian::native) {
+        c = std::byteswap(c);
+      }
+      stream.write((char *)&c, sizeof(typename TStringType::value_type));
+    }
+    spdlog::debug("PaddedString::build assert {} {} {}", this->value,
+                  (size_t)stream.tellp() - old_offset, size);
+    assert(((int64_t)stream.tellp() - old_offset) <= (int64_t)size);
+    for (size_t i = 0; i < size - (stream.tellp() - old_offset); i++) {
+      stream.write("\0", 1);
+    }
+  }
+};
+
+template <typename TLengthType = Int32ul>
+using PascalString8l =
+    PascalString<std::string, TLengthType, std::endian::little>;
+template <typename TLengthType = Int32ul>
+using PascalString16l =
+    PascalString<std::u16string, TLengthType, std::endian::little>;
+template <typename TLengthType = Int32ul>
+using PascalString32l =
+    PascalString<std::u32string, TLengthType, std::endian::little>;
+template <typename TLengthType = Int32ul>
+using PascalString8b = PascalString<std::string, TLengthType, std::endian::big>;
+template <typename TLengthType = Int32ul>
+using PascalString16b =
+    PascalString<std::u16string, TLengthType, std::endian::big>;
+template <typename TLengthType = Int32ul>
+using PascalString32b =
+    PascalString<std::u32string, TLengthType, std::endian::big>;
 
 } // namespace etcetera

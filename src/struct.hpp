@@ -17,7 +17,7 @@ public:
   Struct(PrivateBase, Args &&...args) : Base(PrivateBase()) {
     (fields.emplace(std::get<0>(std::forward<Args>(args)),
                     std::get<1>(std::forward<Args>(args))),
-        ...);
+     ...);
   }
   template <typename... Args>
   static std::shared_ptr<Struct> create(Args &&...args) {
@@ -35,12 +35,12 @@ public:
     tsl::ordered_map<std::string, std::any> obj;
     for (auto &[key, field] : fields) {
       try {
-        spdlog::info("Struct::parse {:02X} {}", (size_t)stream.tellg(), key);
+        spdlog::debug("Struct::parse {:02X} {}", (size_t)stream.tellg(), key);
         std::any value = field->parse(stream);
         obj.emplace(key, value);
       } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + key + "]->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return obj;
@@ -53,7 +53,7 @@ public:
         field->build(stream);
       } catch (std::exception &e) {
         throw std::runtime_error(name + "[" + key + "]->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
   }
@@ -92,7 +92,7 @@ public:
       return fields[key]->get();
     } catch (std::exception &e) {
       throw std::runtime_error(name + "[" + key + "]->" +
-          std::string(e.what()));
+                               std::string(e.what()));
     }
   }
 

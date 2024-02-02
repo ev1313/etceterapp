@@ -437,14 +437,57 @@ int main(int argc, char **argv) {
           }//
       )));
 
+  auto PROPTable = Struct::create(
+      Field("magic", BytesConst::create("PROP"s)),
+      Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("offset", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get<uint32_t>("_", "CLAS", "offset") + lock(c)->get<uint32_t>("_", "CLAS", "size"));
+          },
+          Int32ul::create())),
+      Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("size", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get_field<Area>("Property").lock()->get_ptr_size({}));
+          },
+          Int32ul::create())),
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("Property", Area::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("offset");
+          },
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("size");
+          },
+          []() {
+            return Struct::create(
+                Field("len", Rebuild::create(
+                    [](std::weak_ptr<Base> c) {
+                      return std::make_any<uint32_t>(
+                          lock(c)->get_field<PaddedString8l>("str").lock()->length());
+                    },
+                    Int32ul::create())),
+                Field("str", PaddedString8l::create(
+                          [](std::weak_ptr<Base> c){
+                            return lock(c)->get_parsed<uint32_t>("len");
+                          }
+                      )
+                ),
+                Field("classIndex", Int32ul::create())//
+            );
+          }//
+      )));
+
   auto TOC0Header = Struct::create(
       Field("magic", BytesConst::create("TOC0"s)),
       Field("tableCount", Const<uint32_t>::create(9)), //
       Field("OBJE", OBJETable),
       Field("TOPO", TOPOTable),
       Field("CHNK", CHNKTable),
-      Field("CLAS", CLASTable)
-      // Field("PROP", PROPTable),
+      Field("CLAS", CLASTable),
+      Field("PROP", PROPTable)
       // Field("STRG", STRGTable),
       // Field("TRAN", TRANTable),
       // Field("IMPR", IMPRTable),
