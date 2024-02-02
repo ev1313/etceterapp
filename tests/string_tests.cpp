@@ -215,6 +215,7 @@ TEST_CASE("Padded String") {
 }
 
 TEST_CASE("Pascal String 8l") {
+  // FIXME: refactor constructor
   auto field = PascalString8l<Int32ul>::create(Int32ul::create());
   std::stringstream ss, orig;
   std::string s = "abcd";

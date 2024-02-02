@@ -287,6 +287,7 @@ public:
       }
       s.push_back(data.c);
     }
+    spdlog::debug("PascalString::parse {} {}", (size_t)stream.tellg(), size);
     if constexpr (std::is_same<std::u16string, TStringType>()) {
       // FIXME: this is a hack
       this->value = Utf32To8(Utf16To32(s));
