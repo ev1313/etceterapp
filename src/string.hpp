@@ -244,13 +244,13 @@ public:
   }
 
   size_t get_size() override {
-    size_t size = value.length();
+    size_t size = this->value.length();
     if constexpr (std::is_same<std::u16string, TStringType>()) {
       assert(size % sizeof(char16_t) == 0);
     } else if constexpr (std::is_same<std::u32string, TStringType>()) {
       assert(size % sizeof(char32_t) == 0);
     }
-    return size;
+    return size + length_type->get_size();
   }
 
   size_t length() override {
@@ -269,7 +269,6 @@ public:
   std::any parse(std::istream &stream) override {
     length_type->parse(stream);
     size_t size = length_type->value;
-    size = size * sizeof(typename TStringType::value_type);
 
     TStringType s;
     union {
@@ -299,6 +298,7 @@ public:
     return this->value;
   }
   void build(std::ostream &stream) override {
+    int64_t old_offset = stream.tellp();
     // value is std::string so the length is in bytes even if it is utf-16 or 32
     length_type->value = this->value.length();
     length_type->build(stream);
@@ -313,19 +313,15 @@ public:
     } else {
       s = this->value;
     }
-    int64_t old_offset = stream.tellp();
     for (auto &c : s) {
       if constexpr (Endianess != std::endian::native) {
         c = std::byteswap(c);
       }
       stream.write((char *)&c, sizeof(typename TStringType::value_type));
     }
-    spdlog::debug("PaddedString::build assert {} {} {}", this->value,
+    spdlog::debug("PascalString::build assert {} {} {}", this->value,
                   (size_t)stream.tellp() - old_offset, size);
-    assert(((int64_t)stream.tellp() - old_offset) <= (int64_t)size);
-    for (size_t i = 0; i < size - (stream.tellp() - old_offset); i++) {
-      stream.write("\0", 1);
-    }
+    assert(((int64_t)stream.tellp() - old_offset) == (int64_t)size);
   }
 };
 

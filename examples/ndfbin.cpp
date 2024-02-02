@@ -95,18 +95,12 @@ int main(int argc, char **argv) {
                 NDFField(0x00000008, "WideString",
                          [p]() {
                            return Struct::create(
-                               //Field("len", Int32ul::create()),
-                               Field("len", Rebuild::create(
-                                   [](std::weak_ptr<Base> c) {
-                                     return std::make_any<uint32_t>(
-                                         lock(c)->get_field<PaddedString16l>("str").lock()->length());
-                                   },
-                                   Int32ul::create())),
                                Field("str",
-                                     PaddedString16l::create(
-                                         [](std::weak_ptr<Base> c) -> size_t {
-                                           return lock(c)->get_parsed<uint32_t>("len");
-                                         })));
+                                     PascalString16l<Int32ul>::create(
+                                           Int32ul::create()
+                                         )//
+                                     )//
+                               );
                          }),
                 NDFField(
                     0x00000009, "Reference",
@@ -421,17 +415,8 @@ int main(int argc, char **argv) {
           },
           []() {
             return Struct::create(
-                Field("len", Rebuild::create(
-                    [](std::weak_ptr<Base> c) {
-                      return std::make_any<uint32_t>(
-                          lock(c)->get_field<PaddedString8l>("str").lock()->length());
-                    },
-                    Int32ul::create())),
-                Field("str", PaddedString8l::create(
-                          [](std::weak_ptr<Base> c){
-                            return lock(c)->get_parsed<uint32_t>("len");
-                          }
-                      )
+                Field("str", PascalString8l<Int32ul>::create(
+                      Int32ul::create())
                 )//
             );
           }//
@@ -463,21 +448,160 @@ int main(int argc, char **argv) {
           },
           []() {
             return Struct::create(
-                Field("len", Rebuild::create(
-                    [](std::weak_ptr<Base> c) {
-                      return std::make_any<uint32_t>(
-                          lock(c)->get_field<PaddedString8l>("str").lock()->length());
-                    },
-                    Int32ul::create())),
-                Field("str", PaddedString8l::create(
-                          [](std::weak_ptr<Base> c){
-                            return lock(c)->get_parsed<uint32_t>("len");
-                          }
-                      )
+                Field("str", PascalString8l<Int32ul>::create(
+                      Int32ul::create())
                 ),
                 Field("classIndex", Int32ul::create())//
             );
           }//
+      )));
+
+  auto STRGTable = Struct::create(
+      Field("magic", BytesConst::create("STRG"s)),
+      Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("offset", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get<uint32_t>("_", "PROP", "offset") + lock(c)->get<uint32_t>("_", "PROP", "size"));
+          },
+          Int32ul::create())),
+      Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("size", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get_field<Area>("String").lock()->get_ptr_size({}));
+          },
+          Int32ul::create())),
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("String", Area::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("offset");
+          },
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("size");
+          },
+          []() {
+            return Struct::create(
+                Field("str", PascalString8l<Int32ul>::create(
+                    Int32ul::create())
+                )//
+            );
+          }//
+      )));
+
+  auto TRANTable = Struct::create(
+      Field("magic", BytesConst::create("TRAN"s)),
+      Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("offset", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get<uint32_t>("_", "STRG", "offset") + lock(c)->get<uint32_t>("_", "STRG", "size"));
+          },
+          Int32ul::create())),
+      Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("size", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get_field<Area>("Tran").lock()->get_ptr_size({}));
+          },
+          Int32ul::create())),
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("Tran", Area::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("offset");
+          },
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("size");
+          },
+          []() {
+            return Struct::create(
+                Field("str", PascalString8l<Int32ul>::create(
+                    Int32ul::create())
+                )//
+            );
+          }//
+      )));
+
+  auto IMPR = []() { return LazyBound::create([](std::weak_ptr<LazyBound> p) {
+          return Struct::create(
+                Field("tranIndex", Int32ul::create()),
+                Field("objectIndex", Int32ul::create()),
+                Field("count", Rebuild::create(
+                    [](std::weak_ptr<Base> c) {
+                        return std::make_any<uint32_t>(
+                            lock(c)->get<uint32_t>("_", "IMPR", "count"));
+                    },
+                    Int32ul::create()))
+          );
+        });
+  };
+/*
+      IMPR = Struct(
+"tranIndex" / Int32ul,
+"objectIndex" / Int32ul,
+"count" / Rebuild(Int32ul, lambda ctx: len(ctx.imprs)),
+"_impr_size" / Computed(lambda ctx: 12 + 4 * ctx.count + sum([x._impr_size for x in ctx.imprs]) if not ctx._parsing else 0),
+# sizes of following IMPR
+"improffsets" / Rebuild(Array(this.count, Int32ul), lambda ctx: [4*ctx.count +
+                                                               sum([x._impr_size for x in ctx.imprs[0:i]])
+                                                               for i in range(ctx.count) if ctx.count > 0
+                                                              ]),
+"imprs" / Array(this.count, LazyBound(lambda: IMPR)),
+)
+*/
+
+  auto IMPRTable = Struct::create(
+      Field("magic", BytesConst::create("IMPR"s)),
+      Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("offset", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get<uint32_t>("_", "TRAN", "offset") + lock(c)->get<uint32_t>("_", "TRAN", "size"));
+          },
+          Int32ul::create())),
+      Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("size", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get_field<Area>("Import").lock()->get_ptr_size({}));
+          },
+          Int32ul::create())),
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("Import", Area::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("offset");
+          },
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("size");
+          },
+          IMPR
+      )));
+
+  auto EXPRTable = Struct::create(
+      Field("magic", BytesConst::create("EXPR"s)),
+      Field("pad0", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("offset", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get<uint32_t>("_", "IMPR", "offset") + lock(c)->get<uint32_t>("_", "IMPR", "size"));
+          },
+          Int32ul::create())),
+      Field("pad1", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("size", Rebuild::create(
+          [](std::weak_ptr<Base> c) {
+            return std::make_any<uint32_t>(
+                lock(c)->get_field<Area>("Export").lock()->get_ptr_size({}));
+          },
+          Int32ul::create())),
+      Field("pad2", BytesConst::create("\x00\x00\x00\x00"s)),
+      Field("Export", Area::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("offset");
+          },
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("size");
+          },
+          IMPR
       )));
 
   auto TOC0Header = Struct::create(
@@ -487,11 +611,11 @@ int main(int argc, char **argv) {
       Field("TOPO", TOPOTable),
       Field("CHNK", CHNKTable),
       Field("CLAS", CLASTable),
-      Field("PROP", PROPTable)
-      // Field("STRG", STRGTable),
-      // Field("TRAN", TRANTable),
-      // Field("IMPR", IMPRTable),
-      // Field("EXPR", EXPRTable)
+      Field("PROP", PROPTable),
+      Field("STRG", STRGTable),
+      Field("TRAN", TRANTable),
+      Field("IMPR", IMPRTable),
+      Field("EXPR", EXPRTable)
   );
 
   auto NdfBin = Struct::create(
