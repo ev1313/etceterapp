@@ -110,6 +110,7 @@ public:
     return std::make_shared<Area>(PrivateBase(), offset_fn, size_fn, type_fn);
   }
 
+  bool is_array() override { return true; }
   bool is_pointer_type() override { return true; }
 
   std::any get() override { throw cpptrace::runtime_error("Not implemented"); }
@@ -118,6 +119,10 @@ public:
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
 
   size_t get_size() override { return 0; }
+
+  // if an element of the Area ask for its offset, we need to return the "start"
+  // offset, so the ptr offset
+  size_t get_offset(size_t key) override { return offset_fn(this->parent); }
 
   size_t get_ptr_offset(std::weak_ptr<Base>) override {
     return offset_fn(this->parent);
@@ -146,10 +151,10 @@ public:
       sub->set_parent(this->shared_from_this());
       try {
         sub->parse(stream);
-        i+=1;
+        i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
       data.push_back(sub);
     }
@@ -171,22 +176,22 @@ public:
     for (auto &sub : data) {
       try {
         sub->build(stream);
-        i+=1;
+        i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
 
     int64_t test_pos = offset + get_ptr_size(this->parent);
-    spdlog::debug("Area::build assert {} {} {}", (size_t)stream.tellp(), test_pos, offset);
+    spdlog::debug("Area::build assert {} {} {}", (size_t)stream.tellp(),
+                  test_pos, offset);
     assert(stream.tellp() == test_pos);
 
     stream.seekp(old_offset);
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name,
-                 bool) override {
+  void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
     // TODO: do we need is_root here? probably not.
     spdlog::debug("Area::parse_xml {}", name);
     size_t i = 0;
@@ -199,10 +204,10 @@ public:
       data.push_back(obj);
       try {
         data[i]->parse_xml(child_node, name, true);
-        i+=1;
+        i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
   }
@@ -212,10 +217,10 @@ public:
     for (auto &obj : data) {
       try {
         obj->build_xml(parent, name);
-        i+=1;
+        i += 1;
       } catch (std::exception &e) {
         throw std::runtime_error(std::to_string(i) + "->" +
-            std::string(e.what()));
+                                 std::string(e.what()));
       }
     }
     return parent;

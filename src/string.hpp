@@ -244,12 +244,16 @@ public:
   }
 
   size_t get_size() override {
+    TStringType s;
     size_t size = this->value.length();
     if constexpr (std::is_same<std::u16string, TStringType>()) {
-      assert(size % sizeof(char16_t) == 0);
+      s = Utf32To16(Utf8To32(this->value));
+      size = s.length() * sizeof(char16_t);
     } else if constexpr (std::is_same<std::u32string, TStringType>()) {
-      assert(size % sizeof(char32_t) == 0);
+      s = Utf8To32(this->value);
+      size = s.length() * sizeof(char32_t);
     }
+
     return size + length_type->get_size();
   }
 
@@ -297,22 +301,29 @@ public:
     }
     return this->value;
   }
-  void build(std::ostream &stream) override {
-    int64_t old_offset = stream.tellp();
-    // value is std::string so the length is in bytes even if it is utf-16 or 32
-    length_type->value = this->value.length();
-    length_type->build(stream);
-    size_t size = get_size();
 
+  void build(std::ostream &stream) override {
     TStringType s;
+    size_t len = 0;
     if constexpr (std::is_same<std::u16string, TStringType>()) {
-      // FIXME: this is a hack
       s = Utf32To16(Utf8To32(this->value));
+      len = s.length() * sizeof(char16_t);
     } else if constexpr (std::is_same<std::u32string, TStringType>()) {
       s = Utf8To32(this->value);
+      len = s.length() * sizeof(char32_t);
     } else {
       s = this->value;
+      len = s.length();
     }
+    spdlog::debug("PascalString::build {} {} {}", this->value, len,
+                  length_type->get_size());
+
+    int64_t old_offset = stream.tellp();
+    // value is std::string so the length is in bytes even if it is utf-16 or 32
+    length_type->value = len;
+    length_type->build(stream);
+    size_t size = len + length_type->get_size();
+
     for (auto &c : s) {
       if constexpr (Endianess != std::endian::native) {
         c = std::byteswap(c);

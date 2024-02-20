@@ -22,6 +22,21 @@ public:
     return std::make_shared<Rebuild>(PrivateBase(), rebuild_fn, child);
   }
 
+  void set_parent(std::weak_ptr<Base> parent) override {
+    Base::set_parent(parent);
+    child->set_parent(parent);
+  }
+
+  virtual void set_name(std::string name) {
+    Base::set_name(name);
+    child->set_name(name);
+  }
+
+  virtual void set_idx(size_t idx) {
+    Base::set_idx(idx);
+    child->set_idx(idx);
+  }
+
   std::any get() override { return rebuild_fn(this->parent); }
   std::any get_parsed() override {
     spdlog::debug("Rebuild::get_parsed {}", name);
@@ -90,10 +105,14 @@ public:
     return child->get_field(key);
   };
 
+  size_t get_offset() override { return child->get_offset(); }
+  size_t get_offset(std::string key) override { return child->get_offset(key); }
+  size_t get_offset(size_t key) override { return child->get_offset(key); }
+
   std::vector<std::string> get_names() override {
     // FIXME: hack
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
-    child->set_parent(weak_from_this());
+    child->set_parent(this->parent);
     child->set_name(name);
     return child->get_names();
   }
@@ -103,7 +122,7 @@ public:
   std::any parse(std::istream &stream) override {
     spdlog::debug("LazyBound::parse {:02X} {}", (size_t)stream.tellg(), name);
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
-    child->set_parent(weak_from_this());
+    child->set_parent(this->parent);
     child->set_name(name);
     return child->parse(stream);
   }
@@ -114,7 +133,7 @@ public:
                  bool is_root) override {
     spdlog::debug("Lazybound parsing {}", name);
     child = lazy_fn(static_pointer_cast<LazyBound>(weak_from_this().lock()));
-    child->set_parent(weak_from_this());
+    child->set_parent(this->parent);
     child->set_name(name);
     return child->parse_xml(node, name, is_root);
   }

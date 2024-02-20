@@ -30,9 +30,9 @@ protected:
   struct PrivateBase {};
 
 public:
-  void set_parent(std::weak_ptr<Base> parent) { this->parent = parent; }
-  void set_name(std::string name) { this->name = name; }
-  void set_idx(size_t idx) { this->idx = idx; }
+  virtual void set_parent(std::weak_ptr<Base> parent) { this->parent = parent; }
+  virtual void set_name(std::string name) { this->name = name; }
+  virtual void set_idx(size_t idx) { this->idx = idx; }
 
   virtual std::vector<std::string> get_names() { return {name}; }
 
@@ -180,6 +180,14 @@ public:
     throw cpptrace::runtime_error("Not implemented");
   }
 
+  virtual void set(std::string, std::any) {
+    throw cpptrace::runtime_error("Not implemented");
+  }
+
+  virtual void set(size_t, std::any) {
+    throw cpptrace::runtime_error("Not implemented");
+  }
+
   virtual void parse_xml(pugi::xml_node const &, std::string, bool) {
     throw cpptrace::runtime_error("Not implemented");
   }
@@ -304,10 +312,10 @@ public:
     spdlog::debug("Bytes {:02X} {} read", (size_t)stream.tellg(), value.size());
     stream.read(reinterpret_cast<char *>(value.data()), value.size());
 
-    std::string s;
-    for (auto &c : value) {
-      s += std::format("{:02X}", static_cast<uint8_t>(c));
-    }
+    //std::string s;
+    //for (auto &c : value) {
+    //  s += std::format("{:02X}", static_cast<uint8_t>(c));
+    //}
     return value;
   }
 
@@ -342,6 +350,47 @@ public:
       s += std::format("{:02X}", static_cast<uint8_t>(c));
     }
     parent.append_attribute(name.c_str()) = s.c_str();
+    return parent;
+  }
+};
+
+class Padding : public Bytes {
+public:
+  Padding(PrivateBase, FSizeFn size_fn, size_t size)
+  : Bytes(PrivateBase(), size_fn, size){
+  }
+  static std::shared_ptr<Padding> create(size_t s) {
+    return std::make_shared<Padding>(PrivateBase(), nullptr, s);
+  }
+  static std::shared_ptr<Padding> create(FSizeFn size_fn) {
+    return std::make_shared<Padding>(PrivateBase(), size_fn, 0);
+  }
+  std::any parse(std::istream &stream) override {
+    get_size();
+    value.resize(size);
+
+    spdlog::debug("Padding {:02X} {} read", (size_t)stream.tellg(), value.size());
+    stream.read(reinterpret_cast<char *>(value.data()), value.size());
+
+    for(auto &c : value) {
+      if (c != 0) {
+        throw cpptrace::runtime_error("Padding: expected 0, got " + std::to_string(c));
+      }
+    }
+
+    return value;
+  }
+
+  void build(std::ostream &stream) override {
+    value.resize(size);
+    std::fill(value.begin(), value.end(), 0);
+    stream.write(reinterpret_cast<char *>(value.data()), value.size());
+  }
+
+  void parse_xml(pugi::xml_node const &, std::string , bool) override {
+  }
+
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string ) override {
     return parent;
   }
 };

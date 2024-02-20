@@ -523,17 +523,48 @@ int main(int argc, char **argv) {
       )));
 
   auto IMPR = []() { return LazyBound::create([](std::weak_ptr<LazyBound> p) {
-          return Struct::create(
-                Field("tranIndex", Int32ul::create()),
-                Field("objectIndex", Int32ul::create()),
-                Field("count", Rebuild::create(
-                    [](std::weak_ptr<Base> c) {
-                        return std::make_any<uint32_t>(
-                            lock(c)->get<uint32_t>("_", "IMPR", "count"));
-                    },
-                    Int32ul::create()))
-          );
-        });
+    return Struct::create(
+      Field("tranIndex", Int32ul::create()),
+      Field("objectIndex", Int32ul::create()),
+      Field("count", Rebuild::create(
+        [](std::weak_ptr<Base> c) {
+          return std::make_any<uint32_t>(
+            lock(c)->get_field<Array>("imprs").lock()->length());
+        },
+        Int32ul::create())),
+      Field("improffsets", Rebuild::create(
+        [](std::weak_ptr<Base> c) {
+          std::vector<std::any> offsets;
+          size_t count = lock(c)->get<uint32_t>("count");
+          size_t base_offset = lock(c)->get_offset("count");
+
+          for(size_t i = 0; i < count; i++) {
+            uint32_t offset = 4*(count-1) + lock(c)->get_field<Array>("imprs").lock()->get_offset(i) - base_offset;
+            offsets.push_back(std::make_any<uint32_t>(offset));
+            spdlog::debug("improffsets: {} {}", i, offset);
+          }
+          spdlog::debug("improffsets assert: {} {}", offsets.size(), count);
+          assert(offsets.size() == count);
+          return std::make_any<std::vector<std::any>>(offsets);
+        },
+        Array::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("count");
+          },
+          []() { return Int32ul::create(); })
+      )), //
+      Field("imprs", 
+        Array::create(
+          [](std::weak_ptr<Base> c) {
+            return lock(c)->get_parsed<uint32_t>("count");
+          },
+          [p]() { 
+            return LazyBound::create(lock(p)->get_lazy_fn()); 
+          }
+        )//
+      )//
+    );
+  });
   };
 /*
       IMPR = Struct(

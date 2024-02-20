@@ -104,6 +104,15 @@ public:
   }
   std::any get(size_t key) override { return data[key]->get(); }
 
+  void set(std::any value) override {
+    std::vector<std::any> values = std::any_cast<std::vector<std::any>>(value);
+    init_fields(values.size());
+    for (size_t i = 0; i < values.size(); i++) {
+      data[i]->set(values[i]);
+    }
+  }
+  void set(size_t key, std::any value) override { data[key]->set(value); }
+
   size_t length() override { return data.size(); }
 
   std::weak_ptr<Base> get_field(size_t key) override { return data[key]; }
