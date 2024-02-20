@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.22...3.25)
 project(etceterapp LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -40,11 +40,12 @@ else ()
   set(VERSION_GIT_TAG "unknown")
 endif ()
 
-#configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/version.h)
-
 add_library(etceterapp INTERFACE)
 target_link_libraries(etceterapp INTERFACE argparse::argparse spdlog::spdlog fmt::fmt pugixml::pugixml tsl::ordered_map cpptrace::cpptrace)
-target_include_directories(etceterapp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(etceterapp INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        deps/Hash/src/
+)
 
 add_executable(tests
   tests/array_tests.cpp

@@ -8,6 +8,8 @@
 #include "string.hpp"
 #include "struct.hpp"
 
+#include "md5.h"
+
 #include "argparse/argparse.hpp"
 
 #include <filesystem>
@@ -119,7 +121,6 @@ public:
         assert((size_t)stream.tellg() == (size_t)(c + pathSize));
 
         std::string subpath = sc->get<std::string>();
-        std::replace(subpath.begin(), subpath.end(), '\\', '/');
 
         parsePath(stream, path + subpath, endpos);
       } else {
@@ -129,7 +130,9 @@ public:
         auto sc = Aligned::create(2, CString8l::create());
         sc->parse(stream);
 
-        std::filesystem::path filePath = path + sc->get<std::string>();
+        std::string fPath = path + sc->get<std::string>();
+        std::replace(fPath.begin(), fPath.end(), '\\', '/');
+        std::filesystem::path filePath = fPath;
         file_headers.emplace(filePath, header);
 
         size_t endoffset = (size_t)stream.tellg();
@@ -253,6 +256,7 @@ int main(int argc, char **argv) {
   }
 
   auto edat = EDat::create();
+  edat->outpath = program.get("output");
 
   if(!program.get<bool>("-p")) {
     std::ifstream input;
