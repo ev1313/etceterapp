@@ -320,7 +320,7 @@ public:
   }
 
   void build(std::ostream &stream) override {
-    assert(value.size() == size);
+    custom_assert(value.size() == size);
     spdlog::debug("Bytes {:02X} {} write", (size_t)stream.tellp(),
                   value.size());
     stream.write(reinterpret_cast<char *>(value.data()), value.size());

@@ -198,9 +198,12 @@ public:
     size_t after_offset = stream.tellg();
     size_t pad = modulo(-(after_offset - before_offset), alignment);
     if (pad > 0) {
+      spdlog::debug("Aligned::parse padding {:02X} {}", (size_t)stream.tellg(),
+                    pad);
       stream.seekg(pad, std::ios_base::cur);
     }
-    assert(!stream.fail());
+    spdlog::debug("Aligned::parse before {:02X} after {:02X}", before_offset, after_offset);
+    custom_assert(!stream.fail());
     return ret;
   }
 
@@ -215,7 +218,7 @@ public:
     if (pad > 0) {
       stream.seekp(pad, std::ios_base::cur);
     }
-    assert(!stream.fail());
+    custom_assert(!stream.fail());
   }
 
   void parse_xml(pugi::xml_node const &node, std::string name,

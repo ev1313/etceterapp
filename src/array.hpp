@@ -36,7 +36,7 @@ public:
 
   size_t get_offset(size_t key) {
     size_t ret = get_offset();
-    assert(key < data.size());
+    custom_assert(key < data.size());
     for (size_t i = 0; i < key; i++) {
       try {
         ret += data[i]->get_size();
@@ -227,7 +227,7 @@ public:
 
   size_t get_offset(size_t key) {
     size_t ret = get_offset();
-    assert(key < data.size());
+    custom_assert(key < data.size());
     for (size_t i = 0; i < key; i++) {
       try {
         ret += data[i]->get_size();
@@ -256,7 +256,7 @@ public:
 
   std::any parse(std::istream &stream) override {
     int64_t before_offset = stream.tellg();
-    assert(before_offset >= 0);
+    custom_assert(before_offset >= 0);
     data.clear();
     size_t i = 0;
 

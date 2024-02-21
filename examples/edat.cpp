@@ -32,8 +32,8 @@ struct dictionarySort {
 
     for(size_t i = 0; i < std::min(a.size(), b.size()); i++) {
       if(a[i] != b[i]) {
-        assert(rank.find(a[i]) != std::string::npos);
-        assert(rank.find(b[i]) != std::string::npos);
+        custom_assert(rank.find(a[i]) != std::string::npos);
+        custom_assert(rank.find(b[i]) != std::string::npos);
         return rank.find(a[i]) < rank.find(b[i]);
       }
     }
@@ -72,6 +72,7 @@ public:
   using Base::get_field;
   using Base::get_offset;
 
+  bool read_files = true;
   uint32_t sectorSize = 8192;
   std::string outpath = "./out/";
 
@@ -92,7 +93,7 @@ public:
 
   size_t get_size() override {
     // we would need to build the radixtree here to get the size...
-    assert(false);
+    custom_assert(false);
     return 0;
   }
 
@@ -100,7 +101,9 @@ public:
    * This method only parses the dictionary itself and fills the file_headers
    * */
   void parsePath(std::istream &stream, std::string path, uint32_t ending) {
-    while(stream.tellg() != ending) {
+    spdlog::debug("EDat::parsePath start {:02X} {} {:02X}", (size_t)stream.tellg(), path, ending);
+    while(stream.tellg() < ending) {
+      spdlog::debug("EDat::parsePath loopstart {:02X} {:02X}", (size_t)stream.tellg(), ending);
       size_t c = stream.tellg();
 
       uint32_t pathSize = 0;
@@ -112,20 +115,26 @@ public:
       if (entrySize != 0) {
         endpos = c + entrySize;
       }
+      spdlog::debug("EDat::parsePath {:02X} pathSize {:02X} entrySize {:02X} endpos {:02X}", (size_t)stream.tellg(), pathSize, entrySize, endpos);
 
       // pathSize != 0 -> more parts of the path
       // pathSize == 0 -> the FileHeader
-      if (pathSize != 0) {
+      if (pathSize != 0 and stream.tellg() != ending) {
         auto sc = Aligned::create(2, CString8l::create());
         sc->parse(stream);
-        assert((size_t)stream.tellg() == (size_t)(c + pathSize));
+        custom_assert((size_t)stream.tellg() == (size_t)(c + pathSize));
 
         std::string subpath = sc->get<std::string>();
 
+        spdlog::debug("EDat::parsePath {:02X} endpos {:02X} ending {:02X}", (size_t)stream.tellg(), endpos, ending);
+
         parsePath(stream, path + subpath, endpos);
       } else {
+        spdlog::debug("EDat::parsePath end path {:02X} {}", (size_t)stream.tellg(), path);
         EDatFileHeader header = {};
+        spdlog::debug("EDat::parsePath before reading file header {:02X}", (size_t)stream.tellg());
         stream.read((char *)&header, sizeof(EDatFileHeader));
+        spdlog::debug("EDat::parsePath after reading file header {:02X}", (size_t)stream.tellg());
 
         auto sc = Aligned::create(2, CString8l::create());
         sc->parse(stream);
@@ -136,8 +145,16 @@ public:
         file_headers.emplace(filePath, header);
 
         size_t endoffset = (size_t)stream.tellg();
+        size_t tmp_offset = header.offset;
+        size_t tmp_size = header.size;
+        spdlog::debug("EDat::parsePath reading file {:02X} {}", (size_t)stream.tellg(), filePath.c_str());
+        spdlog::debug("EDat::parsePath reading file @{:02X} {}", tmp_offset, tmp_size);
 
         if (header.size == 0) {
+          continue;
+        }
+
+        if (!read_files) {
           continue;
         }
 
@@ -157,16 +174,18 @@ public:
           file.write(buf, toRead);
           remaining -= toRead;
         }
-        assert(remaining == 0);
+        custom_assert(remaining == 0);
 
         stream.seekg(endoffset);
       }
 
-      assert((size_t)stream.tellg() == endpos);
+      spdlog::debug("EDat::parsePath end of fn {:02X} {} {:02X} {:02X}", (size_t)stream.tellg(), path, endpos, ending);
+      custom_assert((size_t)stream.tellg() == endpos);
     }
   }
 
   std::any parse(std::istream &stream) override {
+    file_headers.clear();
     EDatHeader header = {};
     stream.read((char *)&header, sizeof(header));
     spdlog::debug("EDat::parse {:02X} EDatHeader", (size_t)stream.tellg());
@@ -177,23 +196,23 @@ public:
     assert (header.magic[3] == 't');
     assert (header.unk0 == 2);
     for (unsigned char i : header.pad0) {
-      assert(i == 0);
+      custom_assert(i == 0);
     }
     for (unsigned char i : header.pad1) {
-      assert(i == 0);
+      custom_assert(i == 0);
     }
     for (unsigned char i : header.pad2) {
-      assert(i == 0);
+      custom_assert(i == 0);
     }
 
     sectorSize = header.sectorSize;
 
-    assert(header.offset_dictionary == stream.tellg());
+    custom_assert(header.offset_dictionary == stream.tellg());
 
     uint32_t empty = 0;
     stream.read((char *)&empty, sizeof(empty));
     if(empty == 0x01) {
-      return std::map<std::string, std::vector<uint8_t>>();
+      return get();
     }
     if(empty != 0xA) {
       throw std::runtime_error("Expected 0x01 or 0x0A, got " + std::to_string(empty));
@@ -201,7 +220,7 @@ public:
     uint8_t pad[6];
     stream.read((char *)pad, sizeof(pad));
     for (unsigned char i : pad) {
-      assert(i == 0);
+      custom_assert(i == 0);
     }
 
     // ensure outpath exists
@@ -238,6 +257,10 @@ int main(int argc, char **argv) {
       .default_value(false)
       .implicit_value(true)
       .help("Verbose output");
+  program.add_argument("--dont-read-files")
+      .default_value(false)
+      .implicit_value(true)
+      .help("Don't read the files, just parse the dictionary, necessary for some ndfbin edats.");
   program.add_argument("-p", "--pack").default_value(false).implicit_value(true).help(
       "instead of parsing the input file, pack the input xml file into an edat file");
 
@@ -257,6 +280,7 @@ int main(int argc, char **argv) {
 
   auto edat = EDat::create();
   edat->outpath = program.get("output");
+  edat->read_files = !program.get<bool>("--dont-read-files");
 
   if(!program.get<bool>("-p")) {
     std::ifstream input;

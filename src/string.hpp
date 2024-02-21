@@ -145,9 +145,9 @@ public:
       size = size_fn(this->parent);
     }
     if constexpr (std::is_same<std::u16string, TStringType>()) {
-      assert(size % sizeof(char16_t) == 0);
+      custom_assert(size % sizeof(char16_t) == 0);
     } else if constexpr (std::is_same<std::u32string, TStringType>()) {
-      assert(size % sizeof(char32_t) == 0);
+      custom_assert(size % sizeof(char32_t) == 0);
     }
     return size;
   }
@@ -175,7 +175,7 @@ public:
     s.clear();
     int64_t old_offset = stream.tellg();
     while ((int64_t)stream.tellg() < (old_offset + (int64_t)size)) {
-      assert(stream.tellg() >= 0);
+      custom_assert(stream.tellg() >= 0);
       stream.read(data.bytes, sizeof(typename TStringType::value_type));
       if constexpr (Endianess != std::endian::native) {
         data.c = std::byteswap(data.c);
@@ -212,7 +212,7 @@ public:
     }
     spdlog::debug("PaddedString::build assert {} {} {}", this->value,
                   (size_t)stream.tellp() - old_offset, size);
-    assert(((int64_t)stream.tellp() - old_offset) <= (int64_t)size);
+    custom_assert(((int64_t)stream.tellp() - old_offset) <= (int64_t)size);
     for (size_t i = 0; i < size - (stream.tellp() - old_offset); i++) {
       stream.write("\0", 1);
     }
@@ -283,7 +283,7 @@ public:
     s.clear();
     int64_t old_offset = stream.tellg();
     while ((int64_t)stream.tellg() < (old_offset + (int64_t)size)) {
-      assert(stream.tellg() >= 0);
+      custom_assert(stream.tellg() >= 0);
       stream.read(data.bytes, sizeof(typename TStringType::value_type));
       if constexpr (Endianess != std::endian::native) {
         data.c = std::byteswap(data.c);
@@ -332,7 +332,7 @@ public:
     }
     spdlog::debug("PascalString::build assert {} {} {}", this->value,
                   (size_t)stream.tellp() - old_offset, size);
-    assert(((int64_t)stream.tellp() - old_offset) == (int64_t)size);
+    custom_assert(((int64_t)stream.tellp() - old_offset) == (int64_t)size);
   }
 };
 

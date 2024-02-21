@@ -160,7 +160,7 @@ public:
     }
 
     spdlog::debug("Area::parse assert {} {}", (size_t)stream.tellg(), end_pos);
-    assert(stream.tellg() == end_pos);
+    custom_assert(stream.tellg() == end_pos);
 
     stream.seekg(old_offset);
 
@@ -186,7 +186,7 @@ public:
     int64_t test_pos = offset + get_ptr_size(this->parent);
     spdlog::debug("Area::build assert {} {} {}", (size_t)stream.tellp(),
                   test_pos, offset);
-    assert(stream.tellp() == test_pos);
+    custom_assert(stream.tellp() == test_pos);
 
     stream.seekp(old_offset);
   }

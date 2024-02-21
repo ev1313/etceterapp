@@ -5,6 +5,12 @@
 
 namespace etcetera {
 
+void custom_assert(bool condition) {
+  if (!condition) {
+    throw cpptrace::runtime_error("Assertion failed");
+  }
+}
+
 inline int64_t modulo(int64_t a, int64_t b) {
   return a >= 0 ? a % b : (b - abs(a % b)) % b;
 }

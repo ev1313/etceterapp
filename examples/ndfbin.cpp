@@ -544,7 +544,7 @@ int main(int argc, char **argv) {
             spdlog::debug("improffsets: {} {}", i, offset);
           }
           spdlog::debug("improffsets assert: {} {}", offsets.size(), count);
-          assert(offsets.size() == count);
+          custom_assert(offsets.size() == count);
           return std::make_any<std::vector<std::any>>(offsets);
         },
         Array::create(
