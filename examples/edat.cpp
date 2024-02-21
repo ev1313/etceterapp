@@ -204,6 +204,7 @@ public:
     for (unsigned char i : header.pad2) {
       custom_assert(i == 0);
     }
+    custom_assert(header.offset_dictionary == sizeof(header));
 
     sectorSize = header.sectorSize;
 
@@ -231,7 +232,25 @@ public:
     return get();
   }
 
-  void build(std::ostream &stream) override {}
+  void build(std::ostream &stream) override {
+    EDatHeader header = {};
+    strcpy((char *)header.magic, "edat");
+    header.unk0 = 2;
+    header.offset_dictionary = sizeof(header);
+
+    stream.seekp(sizeof(header), std::ios_base::beg);
+
+    // first sort all file paths
+    std::vector<std::string> paths;
+    for(auto &[path, _] : file_headers) {
+      paths.push_back(path);
+    }
+    dictionarySort sorter;
+    std::sort(paths.begin(), paths.end(), sorter);
+
+    // now build the trie
+
+  }
 
   void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
   }
@@ -239,9 +258,21 @@ public:
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
     auto root = parent.append_child(name.c_str());
     root.append_attribute("sectorSize").set_value(sectorSize);
-    for(auto &[path, _] : file_headers) {
-      auto file = parent.append_child("File");
+    for(auto &[path, header] : file_headers) {
+      auto file = root.append_child("File");
       file.append_attribute("path").set_value(path.c_str());
+      if(!read_files) {
+        file.append_attribute("offset").set_value(header.offset);
+        file.append_attribute("pad0").set_value(header.pad0);
+        file.append_attribute("size").set_value(header.size);
+        file.append_attribute("pad").set_value(header.pad);
+        // checksum as hex
+        std::stringstream ss;
+        for (unsigned char i : header.checksum) {
+          ss << std::hex << std::setw(2) << std::setfill('0') << (int)i;
+        }
+        file.append_attribute("checksum").set_value(ss.str().c_str());
+      }
     }
     return root;
   }

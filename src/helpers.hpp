@@ -5,7 +5,7 @@
 
 namespace etcetera {
 
-void custom_assert(bool condition) {
+inline void custom_assert(bool condition) {
   if (!condition) {
     throw cpptrace::runtime_error("Assertion failed");
   }
