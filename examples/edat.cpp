@@ -19,29 +19,72 @@
 using namespace etcetera;
 using namespace std::string_literals;
 
+// these are all allowed characters in paths in their correct order
+// all paths get sorted by this order
+// note all paths are with \ and not /
+// however internally only / is used so filepaths "just work"
+static const std::vector<char> characters = {'/', '\\', '-', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', ' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
+
 struct dictionarySort {
   bool operator()(const std::string& a, const std::string& b) const {
-    auto R = [](char a, char b) {
-      std::string l;
-      for (char c = a; c <= b; c++) {
-        l += c;
-      }
-      return l;
-    };
-    std::string rank = "\\"s + "-"s + "."s + R('0', '9') + "_"s + " "s + R('a', 'z') + R('A', 'Z');
-
     for(size_t i = 0; i < std::min(a.size(), b.size()); i++) {
       if(a[i] != b[i]) {
-        custom_assert(rank.find(a[i]) != std::string::npos);
-        custom_assert(rank.find(b[i]) != std::string::npos);
-        return rank.find(a[i]) < rank.find(b[i]);
+        auto a_i = std::find(characters.begin(), characters.end(), a[i]);
+        auto b_i = std::find(characters.begin(), characters.end(), b[i]);
+        custom_assert(a_i != characters.end());
+        custom_assert(b_i != characters.end());
+        return a_i < b_i;
       }
     }
+    // a == b should not happen when parsing an edat
+    // this would mean there are two paths equal
+    spdlog::debug("EDat::dictionarySort a == b {} {}", a, b);
+    custom_assert(false);
+    return false;
   }
 };
 
 class EDat : public Base {
 private:
+  Chocobo1::MD5 dictionary_md5;
+  dictionarySort sorter;
+
+  struct Trie {
+    std::map<char, Trie> children;
+    [[nodiscard]] bool end() const {
+      return children.empty();
+    }
+
+    void insert(const std::string& path) {
+      Trie* current = this;
+      for(auto c : path) {
+        custom_assert(std::find(characters.begin(), characters.end(), c) != characters.end());
+        if(current->children.find(c) == current->children.end()) {
+          current->children.emplace(c, Trie());
+        }
+        current = &current->children[c];
+      }
+    }
+
+    std::vector<std::pair<std::string, Trie*>> get_parts() {
+      std::vector<std::pair<std::string, Trie*>> ret;
+      for(auto c : characters) {
+        if(!children.contains(c)) {
+          continue;
+        }
+        std::string part;
+        part += c;
+        Trie* current = &children[c];
+        while(current->children.size() == 1) {
+          auto &[child_c, child_node] = *current->children.begin();
+          part += child_c;
+          current = &child_node;
+        }
+        ret.emplace_back(part, current);
+      }
+      return ret;
+    }
+  };
 
   struct EDatHeader {
     uint8_t magic[4];
@@ -65,6 +108,7 @@ private:
     uint8_t checksum[16];
   } __attribute__((packed));
 
+  EDatHeader edat_header;
   std::map<std::string, EDatFileHeader> file_headers;
 
 public:
@@ -166,7 +210,7 @@ public:
         // copy file to outpath
         char buf[4096];
         std::ofstream file(outpath / filePath, std::ios::binary);
-        stream.seekg(header.offset);
+        stream.seekg(edat_header.offset_files + header.offset, std::ios::beg);
         size_t remaining = header.size;
         while(remaining > 0) {
           size_t toRead = std::min(remaining, (size_t)sizeof(buf));
@@ -186,29 +230,29 @@ public:
 
   std::any parse(std::istream &stream) override {
     file_headers.clear();
-    EDatHeader header = {};
-    stream.read((char *)&header, sizeof(header));
+    edat_header = {};
+    stream.read((char *)&edat_header, sizeof(edat_header));
     spdlog::debug("EDat::parse {:02X} EDatHeader", (size_t)stream.tellg());
 
-    assert (header.magic[0] == 'e');
-    assert (header.magic[1] == 'd');
-    assert (header.magic[2] == 'a');
-    assert (header.magic[3] == 't');
-    assert (header.unk0 == 2);
-    for (unsigned char i : header.pad0) {
+    assert (edat_header.magic[0] == 'e');
+    assert (edat_header.magic[1] == 'd');
+    assert (edat_header.magic[2] == 'a');
+    assert (edat_header.magic[3] == 't');
+    assert (edat_header.unk0 == 2);
+    for (unsigned char i : edat_header.pad0) {
       custom_assert(i == 0);
     }
-    for (unsigned char i : header.pad1) {
+    for (unsigned char i : edat_header.pad1) {
       custom_assert(i == 0);
     }
-    for (unsigned char i : header.pad2) {
+    for (unsigned char i : edat_header.pad2) {
       custom_assert(i == 0);
     }
-    custom_assert(header.offset_dictionary == sizeof(header));
+    custom_assert(edat_header.offset_dictionary == sizeof(edat_header));
 
-    sectorSize = header.sectorSize;
+    sectorSize = edat_header.sectorSize;
 
-    custom_assert(header.offset_dictionary == stream.tellg());
+    custom_assert(edat_header.offset_dictionary == stream.tellg());
 
     uint32_t empty = 0;
     stream.read((char *)&empty, sizeof(empty));
@@ -227,32 +271,223 @@ public:
     // ensure outpath exists
     std::filesystem::create_directories(outpath);
 
-    parsePath(stream, "", header.offset_dictionary + header.size_dictionary);
+    parsePath(stream, "", edat_header.offset_dictionary + edat_header.size_dictionary);
 
     return get();
   }
 
+  void buildTrie(std::ostream &stream, Trie *trie, std::string path, bool is_last = false) {
+    auto parts = trie->get_parts();
+
+    size_t i = 0;
+    for(auto &[part, node] : parts) {
+      bool is_last_item = i == parts.size() - 1;
+      i+=1;
+      if(node->end()) {
+        auto current_path = path + part;
+
+        // already create aligned string, so we can use its size
+        auto str = CString8l::create();
+        str->value = part;
+        std::replace(str->value.begin(), str->value.end(), '/', '\\');
+        auto aligned_str = Aligned::create(2, str);
+
+
+        // get the corresponding file header
+        custom_assert(file_headers.contains(current_path));
+        EDatFileHeader &header = file_headers[current_path];
+
+        uint32_t pathSize = 0;
+        uint32_t entrySize = 0;
+        if(!is_last_item) {
+          entrySize = 8 + sizeof(header) + aligned_str->get_size();
+        }
+
+        stream.write((char *)&pathSize, sizeof(pathSize));
+        dictionary_md5.addData((char *)&pathSize, sizeof(pathSize));
+        stream.write((char *)&entrySize, sizeof(entrySize));
+        dictionary_md5.addData((char *)&entrySize, sizeof(entrySize));
+
+        spdlog::debug("EDat::buildTrie {:02X} path {} pathSize {:02X} entrySize {:02X}", (size_t)stream.tellp(), current_path, pathSize, entrySize);
+
+        stream.write((char *)&header, sizeof(header));
+        dictionary_md5.addData((char *)&header, sizeof(header));
+
+        aligned_str->build(stream);
+
+        is_last = true;
+      } else {
+        // construct path already, so we can get the length
+        auto str = CString8l::create();
+        str->value = part;
+        std::replace(str->value.begin(), str->value.end(), '/', '\\');
+        auto aligned_str = Aligned::create(2, str);
+
+        size_t offset_part = stream.tellp();
+        uint32_t pathSize = 8 + aligned_str->get_size();
+        // first write empty entrySize
+        uint32_t entrySize = 0;
+        stream.write((char *)&pathSize, sizeof(pathSize));
+        stream.write((char *)&entrySize, sizeof(entrySize));
+
+        spdlog::debug("EDat::buildTrie {:02X} part {} pathSize {:02X} entrySize {:02X} {} {}", (size_t)stream.tellp(), part, pathSize, entrySize, is_last_item, is_last);
+
+        // build path
+        aligned_str->build(stream);
+
+        // now write the rest of the tree
+        buildTrie(stream, node, path + part, is_last_item);
+
+        // correct entrySize
+        if(!is_last_item) {
+          size_t end_offset = stream.tellp();
+          entrySize = end_offset - offset_part;
+          //stream.seekp(offset_part + sizeof(pathSize), std::ios_base::beg);
+          stream.seekp(offset_part + 4, std::ios_base::beg);
+          stream.write((char *)&entrySize, sizeof(entrySize));
+          stream.seekp(end_offset, std::ios_base::beg);
+        }
+      }
+    }
+  }
+
   void build(std::ostream &stream) override {
-    EDatHeader header = {};
-    strcpy((char *)header.magic, "edat");
-    header.unk0 = 2;
-    header.offset_dictionary = sizeof(header);
+    edat_header = {};
+    strcpy((char *)edat_header.magic, "edat");
+    edat_header.unk0 = 2;
+    edat_header.sectorSize = sectorSize;
+    edat_header.offset_dictionary = sizeof(edat_header);
+    stream.seekp(sizeof(edat_header), std::ios_base::beg);
 
-    stream.seekp(sizeof(header), std::ios_base::beg);
+    // dictionary
+    dictionary_md5.reset();
 
-    // first sort all file paths
+    uint32_t empty = 0;
+    if(file_headers.empty()) {
+      empty = 0x01;
+    } else {
+      empty = 0x0A;
+    }
+    stream.write((char *)&empty, sizeof(empty));
+    dictionary_md5.addData((char *)&empty, sizeof(empty));
+    uint8_t pad[6] = {0};
+    stream.write((char *)pad, sizeof(pad));
+    dictionary_md5.addData((char *)pad, sizeof(pad));
+
+    // get all filepaths
     std::vector<std::string> paths;
     for(auto &[path, _] : file_headers) {
       paths.push_back(path);
     }
-    dictionarySort sorter;
+
+    // sort all file paths
     std::sort(paths.begin(), paths.end(), sorter);
 
-    // now build the trie
+    // update all file headers (files possibly changed)
+    // recalculate offsets, sizes and checksums
+    if(read_files) {
+      size_t current_file_offset = 0;
+      for(auto &path : paths) {
+        auto &file_header = file_headers[path];
+        file_header.offset = current_file_offset;
+        // get the file path based on the current outpath
+        auto filepath = std::filesystem::path(outpath) / std::filesystem::path(path);
+        // calculate the filesize modulo sectorSize
+        file_header.size = std::filesystem::file_size(filepath);
+        //  and update the offset
+        if(file_header.size % sectorSize != 0) {
+          current_file_offset += (int(file_header.size / sectorSize) + 1) * sectorSize;
+        } else {
+          current_file_offset += file_header.size;
+        }
+        // calculate the md5 sum of the file and append data to the global sum
+        std::ifstream file(filepath, std::ios::binary);
+        Chocobo1::MD5 md5;
+        size_t remaining = file_header.size;
+        std::vector<char> buf;
+        buf.resize(sectorSize);
+        while(remaining != 0) {
+          std::fill(buf.begin(), buf.end(), 0);
+          size_t size = std::min(remaining, (size_t)sectorSize);
+          file.read(buf.data(), (long)size);
+          md5.addData(buf.data(), (long)size);
+          remaining -= size;
+        }
+        auto result = md5.finalize().toVector();
+        for(size_t i = 0; i < 16; i++) {
+          file_header.checksum[i] = result[i];
+        }
+      }
+      auto result = dictionary_md5.finalize().toVector();
+      for(size_t i = 0; i < 16; i++) {
+        edat_header.checksum[i] = result[i];
+      }
+    }
 
+    // now build the trie
+    Trie trie;
+    for(auto &path : paths) {
+      trie.insert(path);
+    }
+    size_t offset_trie = stream.tellp();
+    buildTrie(stream, &trie, "");
+    size_t end_offset_trie = stream.tellp();
+    edat_header.size_dictionary = end_offset_trie - offset_trie + 10;
+
+    edat_header.offset_files = stream.tellp();
+    if(edat_header.offset_files % sectorSize != 0) {
+      edat_header.offset_files = (int(edat_header.offset_files / sectorSize) + 1) * sectorSize;
+    }
+    // now write files
+    std::vector<char> buf;
+    buf.resize(sectorSize);
+    for(auto &path : paths) {
+      auto &file_header = file_headers[path];
+      stream.seekp(edat_header.offset_files + file_header.offset, std::ios_base::beg);
+      auto filepath = std::filesystem::path(outpath) / std::filesystem::path(path);
+      std::ifstream file(filepath, std::ios::binary);
+      size_t remaining = file_header.size;
+      while(remaining > 0) {
+        std::fill(buf.begin(), buf.end(), 0);
+        size_t toRead = std::min(remaining, (size_t)sectorSize);
+        file.read(buf.data(), toRead);
+        stream.write(buf.data(), buf.size());
+        remaining -= toRead;
+      }
+      custom_assert(remaining == 0);
+    }
+    edat_header.size_files = (size_t)stream.tellp() - edat_header.offset_files;
+
+    // finally update the header
+    stream.seekp(0, std::ios_base::beg);
+    stream.write((char *)&edat_header, sizeof(edat_header));
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name, bool) override {
+  void parse_xml(pugi::xml_node const &node, std::string name, bool is_root) override {
+    auto n = node;
+    if(!is_root){
+      n = node.child(name.c_str());
+    }
+    spdlog::debug("EDat::parse_xml name {}", name);
+    sectorSize = n.attribute("sectorSize").as_uint();
+    spdlog::debug("EDat::parse_xml sectorSize {}", sectorSize);
+    for(auto file : n.children("File")) {
+      std::string path = file.attribute("path").as_string();
+      EDatFileHeader header = {};
+      if(!read_files) {
+        file.attribute("offset").as_uint(header.offset);
+        file.attribute("pad0").as_uint(header.pad0);
+        file.attribute("size").as_uint(header.size);
+        file.attribute("pad").as_uint(header.pad);
+        std::string checksum = file.attribute("checksum").as_string();
+        custom_assert(checksum.size() == 32);
+        for(size_t i = 0; i < 16; i++) {
+          std::string byte = checksum.substr(i * 2, 2);
+          header.checksum[i] = std::stoi(byte, nullptr, 16);
+        }
+      }
+      file_headers.emplace(path, header);
+    }
   }
 
   pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {

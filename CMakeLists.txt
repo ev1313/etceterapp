@@ -65,6 +65,5 @@ target_link_libraries(ndfbin PRIVATE etceterapp)
 
 add_executable(edat
         examples/edat.cpp
-        examples/trie.cpp
 )
 target_link_libraries(edat PRIVATE etceterapp)
