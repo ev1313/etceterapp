@@ -276,7 +276,7 @@ public:
     return get();
   }
 
-  void buildTrie(std::ostream &stream, Trie *trie, std::string path, bool is_last = false) {
+  void buildTrie(std::iostream &stream, Trie *trie, std::string path, bool is_last = false) {
     auto parts = trie->get_parts();
 
     size_t i = 0;
@@ -304,14 +304,11 @@ public:
         }
 
         stream.write((char *)&pathSize, sizeof(pathSize));
-        dictionary_md5.addData((char *)&pathSize, sizeof(pathSize));
         stream.write((char *)&entrySize, sizeof(entrySize));
-        dictionary_md5.addData((char *)&entrySize, sizeof(entrySize));
 
         spdlog::debug("EDat::buildTrie {:02X} path {} pathSize {:02X} entrySize {:02X}", (size_t)stream.tellp(), current_path, pathSize, entrySize);
 
         stream.write((char *)&header, sizeof(header));
-        dictionary_md5.addData((char *)&header, sizeof(header));
 
         aligned_str->build(stream);
 
@@ -342,7 +339,7 @@ public:
         if(!is_last_item) {
           size_t end_offset = stream.tellp();
           entrySize = end_offset - offset_part;
-          //stream.seekp(offset_part + sizeof(pathSize), std::ios_base::beg);
+          // the 4 is from the pathSize
           stream.seekp(offset_part + 4, std::ios_base::beg);
           stream.write((char *)&entrySize, sizeof(entrySize));
           stream.seekp(end_offset, std::ios_base::beg);
@@ -351,16 +348,13 @@ public:
     }
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     edat_header = {};
     strcpy((char *)edat_header.magic, "edat");
     edat_header.unk0 = 2;
     edat_header.sectorSize = sectorSize;
     edat_header.offset_dictionary = sizeof(edat_header);
     stream.seekp(sizeof(edat_header), std::ios_base::beg);
-
-    // dictionary
-    dictionary_md5.reset();
 
     uint32_t empty = 0;
     if(file_headers.empty()) {
@@ -369,10 +363,8 @@ public:
       empty = 0x0A;
     }
     stream.write((char *)&empty, sizeof(empty));
-    dictionary_md5.addData((char *)&empty, sizeof(empty));
     uint8_t pad[6] = {0};
     stream.write((char *)pad, sizeof(pad));
-    dictionary_md5.addData((char *)pad, sizeof(pad));
 
     // get all filepaths
     std::vector<std::string> paths;
@@ -388,6 +380,7 @@ public:
     if(read_files) {
       size_t current_file_offset = 0;
       for(auto &path : paths) {
+        // update the file offset
         auto &file_header = file_headers[path];
         file_header.offset = current_file_offset;
         // get the file path based on the current outpath
@@ -400,7 +393,8 @@ public:
         } else {
           current_file_offset += file_header.size;
         }
-        // calculate the md5 sum of the file and append data to the global sum
+
+        // calculate the md5 sum of the file
         std::ifstream file(filepath, std::ios::binary);
         Chocobo1::MD5 md5;
         size_t remaining = file_header.size;
@@ -418,10 +412,6 @@ public:
           file_header.checksum[i] = result[i];
         }
       }
-      auto result = dictionary_md5.finalize().toVector();
-      for(size_t i = 0; i < 16; i++) {
-        edat_header.checksum[i] = result[i];
-      }
     }
 
     // now build the trie
@@ -434,10 +424,33 @@ public:
     size_t end_offset_trie = stream.tellp();
     edat_header.size_dictionary = end_offset_trie - offset_trie + 10;
 
+    // now we are at the start of the files
     edat_header.offset_files = stream.tellp();
+
+    // first update the dictionary checksum
+    {
+      stream.seekg(edat_header.offset_dictionary, std::ios_base::beg);
+      size_t remaining = edat_header.size_dictionary;
+      while (remaining != 0) {
+        char buf[4096];
+        size_t toRead = std::min(remaining, (size_t)sizeof(buf));
+        stream.read(buf, toRead);
+        dictionary_md5.addData(buf, toRead);
+        remaining -= toRead;
+      }
+      auto result = dictionary_md5.finalize().toVector();
+      for (size_t i = 0; i < 16; i++) {
+        edat_header.checksum[i] = result[i];
+      }
+    }
+
+    // TODO: shouldn't be necessary?
+    stream.seekp(edat_header.offset_files, std::ios_base::beg);
+
     if(edat_header.offset_files % sectorSize != 0) {
       edat_header.offset_files = (int(edat_header.offset_files / sectorSize) + 1) * sectorSize;
     }
+
     // now write files
     std::vector<char> buf;
     buf.resize(sectorSize);
@@ -564,7 +577,7 @@ int main(int argc, char **argv) {
     spdlog::debug("Load result: {}", result.description());
     edat->parse_xml(doc.child("root").child("EDat"), "EDat", true);
 
-    std::ofstream ofs(program.get("output") + "/edat.bin", std::ios::binary);
+    std::fstream ofs(program.get("output") + "/edat.bin", std::ios::in | std::ios::out | std::ios::binary);
     edat->build(ofs);
   }
 }

@@ -60,20 +60,18 @@ public:
     return child->parse(stream);
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     auto data = this->get();
     child->set(data);
     child->build(stream);
   }
 
-  void parse_xml(pugi::xml_node const &node, std::string name,
-                 bool is_root) override {
-    // child->parse_xml(node, name, is_root);
+  void parse_xml(pugi::xml_node const &, std::string,
+                 bool) override {
   }
 
-  pugi::xml_node build_xml(pugi::xml_node &parent, std::string name) override {
+  pugi::xml_node build_xml(pugi::xml_node &parent, std::string) override {
     return parent;
-    // child->build_xml(parent, name);
   }
 };
 
@@ -127,7 +125,7 @@ public:
     return child->parse(stream);
   }
 
-  void build(std::ostream &stream) override { child->build(stream); }
+  void build(std::iostream &stream) override { child->build(stream); }
 
   void parse_xml(pugi::xml_node const &node, std::string name,
                  bool is_root) override {
@@ -207,7 +205,7 @@ public:
     return ret;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     if (alignment_fn) {
       alignment = alignment_fn.value()(this->parent);
     }

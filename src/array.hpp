@@ -86,7 +86,7 @@ public:
     return data;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     size_t i = 0;
     for (auto &obj : data) {
       try {
@@ -294,7 +294,7 @@ public:
     return data;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     size_t i = 0;
     for (auto &obj : data) {
       try {

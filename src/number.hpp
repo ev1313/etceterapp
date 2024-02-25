@@ -31,7 +31,7 @@ public:
                   name, value);
     return value;
   }
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     auto val = value;
     if constexpr (Endianess != std::endian::native) {
       union {

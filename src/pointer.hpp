@@ -55,7 +55,7 @@ public:
     return ret;
   }
 
-  void build(std::ostream &s) override {
+  void build(std::iostream &s) override {
     offset = offset_fn(this->parent);
     size_t old_offset = s.tellp();
     s.seekp(offset);
@@ -167,7 +167,7 @@ public:
     return data;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     auto offset = offset_fn(this->parent);
     size_t old_offset = stream.tellp();
     stream.seekp(offset);

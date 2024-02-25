@@ -38,7 +38,7 @@ public:
 
   Base(PrivateBase) {}
   virtual std::any parse(std::istream &stream) = 0;
-  virtual void build(std::ostream &stream) = 0;
+  virtual void build(std::iostream &stream) = 0;
 
   /*
    * Returns true if the object is a struct
@@ -176,6 +176,15 @@ public:
     return lock(field)->get_offset(key2, args...);
   }
 
+  std::vector<char> get_bytes() {
+    std::vector<char> ret;
+    ret.resize(get_size());
+    std::stringstream ss;
+    build(ss);
+    ss.read(ret.data(), ret.size());
+    return ret;
+  }
+
   virtual void set(std::any) {
     throw cpptrace::runtime_error("Not implemented");
   }
@@ -219,7 +228,7 @@ public:
     return value;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     stream.write(reinterpret_cast<char *>(&value), sizeof(T));
   }
 
@@ -261,7 +270,7 @@ public:
     return value;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     stream.write(value.data(), value.length());
   }
 
@@ -319,7 +328,7 @@ public:
     return value;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     custom_assert(value.size() == size);
     spdlog::debug("Bytes {:02X} {} write", (size_t)stream.tellp(),
                   value.size());
@@ -381,7 +390,7 @@ public:
     return value;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     value.resize(size);
     std::fill(value.begin(), value.end(), 0);
     stream.write(reinterpret_cast<char *>(value.data()), value.size());
@@ -440,7 +449,7 @@ public:
     return value;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     auto val = value;
     if constexpr (Endianess != std::endian::native) {
       union {

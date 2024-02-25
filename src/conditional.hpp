@@ -119,7 +119,7 @@ public:
     return child->parse(stream);
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     if (if_fn(this->parent)) {
       if (if_child) {
         spdlog::debug("IfThenElse::build {}", if_child.value().first);
@@ -258,7 +258,7 @@ public:
     return current->parse(stream);
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     spdlog::debug("Switch::build {}", (size_t)stream.tellp());
     if (!current) {
       throw cpptrace::runtime_error("Switch: no current child");

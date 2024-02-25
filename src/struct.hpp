@@ -46,7 +46,7 @@ public:
     return obj;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     for (auto &[key, field] : fields) {
       spdlog::debug("Struct::build_xml {} {}", (size_t)stream.tellp(), key);
       try {

@@ -92,7 +92,7 @@ public:
     }
     return this->value;
   }
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     TStringType s;
     if constexpr (std::is_same<std::u16string, TStringType>()) {
       // FIXME: this is a hack
@@ -192,7 +192,7 @@ public:
     }
     return this->value;
   }
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     get_size();
     TStringType s;
     if constexpr (std::is_same<std::u16string, TStringType>()) {
@@ -302,7 +302,7 @@ public:
     return this->value;
   }
 
-  void build(std::ostream &stream) override {
+  void build(std::iostream &stream) override {
     TStringType s;
     size_t len = 0;
     if constexpr (std::is_same<std::u16string, TStringType>()) {
