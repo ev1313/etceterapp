@@ -79,6 +79,7 @@ private:
     }
   };
 
+public:
   struct EDatHeader {
     uint8_t magic[4];
     uint32_t unk0;
@@ -104,7 +105,6 @@ private:
   EDatHeader edat_header;
   std::map<std::string, EDatFileHeader> file_headers;
 
-public:
   using Base::get;
   using Base::get_field;
   using Base::get_offset;
@@ -187,10 +187,6 @@ public:
         spdlog::debug("EDat::parsePath reading file {:02X} {}", (size_t)stream.tellg(), filePath.c_str());
         spdlog::debug("EDat::parsePath reading file @{:02X} {}", tmp_offset, tmp_size);
 
-        if (header.size == 0) {
-          continue;
-        }
-
         if (!read_files) {
           continue;
         }
@@ -199,6 +195,13 @@ public:
         std::filesystem::path dirpath = outpath / filePath;
         dirpath = dirpath.parent_path();
         std::filesystem::create_directories(dirpath);
+
+        if (header.size == 0) {
+          // create empty file
+          std::ofstream file(outpath / filePath, std::ios::binary);
+          file.close();
+          continue;
+        }
 
         // copy file to outpath
         char buf[4096];
