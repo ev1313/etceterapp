@@ -67,3 +67,9 @@ add_executable(edat
         examples/edat.cpp
 )
 target_link_libraries(edat PRIVATE etceterapp)
+
+add_executable(edat_helper
+        examples/edat_helper.cpp
+        examples/edat_helper.cpp
+)
+target_link_libraries(edat_helper PRIVATE etceterapp)
