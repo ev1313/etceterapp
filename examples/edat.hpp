@@ -422,6 +422,7 @@ public:
 
     // now we are at the start of the files
     edat_header.offset_files = stream.tellp();
+    stream.write((char *)&pad, sizeof(pad));
 
     // first update the dictionary checksum
     {
@@ -439,8 +440,8 @@ public:
         edat_header.checksum[i] = result[i];
       }
     }
+    spdlog::debug("EDat::build {:02X} EDatHeader", (size_t)stream.tellp());
 
-    // TODO: shouldn't be necessary?
     stream.seekp(edat_header.offset_files, std::ios_base::beg);
 
     if(edat_header.offset_files % sectorSize != 0) {
@@ -468,6 +469,7 @@ public:
     edat_header.size_files = (size_t)stream.tellp() - edat_header.offset_files;
 
     // finally update the header
+    spdlog::debug("EDat::build {:02X} EDatHeader", (size_t)stream.tellp());
     stream.seekp(0, std::ios_base::beg);
     stream.write((char *)&edat_header, sizeof(edat_header));
   }

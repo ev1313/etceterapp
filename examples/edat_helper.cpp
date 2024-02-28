@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 
       // parse the original game file
       std::ifstream orig_input;
-      orig_input.open(entry.path(), std::ios::binary);
+      orig_input.open(fs::path(program.get("--wgrd_path")) / part, std::ios::binary);
       auto orig_edat = EDat::create();
       // only read the file headers
       orig_edat->read_files = false;
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
       // compare the original and modded game files and get the changed files
       for (const auto &[path, header] : modded_edat->file_headers) {
         auto orig_header = orig_edat->file_headers[path];
-        std::cout << "path: " << path << std::endl;
+        std::cout << "path: " << path << " checksum: " << header.checksum << std::endl;
         for(int i = 0; i < 16; i++) {
           if (header.checksum[i] != orig_header.checksum[i]) {
             std::cout << "changed file: " << entry << " " << path << std::endl;
