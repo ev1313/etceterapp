@@ -688,7 +688,7 @@ int main(int argc, char **argv) {
     spdlog::debug("Load result: {}", result.description());
     NdfBin->parse_xml(doc.child("root").child("NdfBin"), "NdfBin", true);
 
-    std::ofstream ofs(program.get("output") + "/ndfbin.bin", std::ios::binary);
+    std::fstream ofs(program.get("output") + "/ndfbin.bin", std::fstream::in | std::fstream::out | std::fstream::binary);
     NdfBin->build(ofs);
   }
 }
