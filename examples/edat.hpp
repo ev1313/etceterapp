@@ -250,6 +250,10 @@ public:
 
     etcetera::custom_assert(edat_header.offset_dictionary == stream.tellg());
 
+    if(edat_header.size_dictionary == 0) {
+      return get();
+    }
+
     uint32_t empty = 0;
     stream.read((char *)&empty, sizeof(empty));
     if(empty == 0x01) {
