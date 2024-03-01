@@ -14,6 +14,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+
+namespace fs = std::filesystem;
+
 // these are all allowed characters in paths in their correct order
 // all paths get sorted by this order
 // note all paths are with \ and not /
@@ -191,30 +194,7 @@ public:
           continue;
         }
 
-        // create directory for path
-        std::filesystem::path dirpath = outpath / filePath;
-        dirpath = dirpath.parent_path();
-        std::filesystem::create_directories(dirpath);
-
-        if (header.size == 0) {
-          // create empty file
-          std::ofstream file(outpath / filePath, std::ios::binary);
-          file.close();
-          continue;
-        }
-
-        // copy file to outpath
-        char buf[4096];
-        std::ofstream file(outpath / filePath, std::ios::binary);
-        stream.seekg(edat_header.offset_files + header.offset, std::ios::beg);
-        size_t remaining = header.size;
-        while(remaining > 0) {
-          size_t toRead = std::min(remaining, (size_t)sizeof(buf));
-          stream.read(buf, toRead);
-          file.write(buf, toRead);
-          remaining -= toRead;
-        }
-        etcetera::custom_assert(remaining == 0);
+        parse_single_file(stream, filePath, header);
 
         stream.seekg(endoffset);
       }
@@ -222,6 +202,32 @@ public:
       spdlog::debug("EDat::parsePath end of fn {:02X} {} {:02X} {:02X}", (size_t)stream.tellg(), path, endpos, ending);
       etcetera::custom_assert((size_t)stream.tellg() == endpos);
     }
+  }
+
+  void parse_single_file(std::istream &stream, fs::path filePath, const EDatFileHeader &header) {
+    // create directory for path
+    std::filesystem::path dirpath = outpath / filePath;
+    dirpath = dirpath.parent_path();
+    std::filesystem::create_directories(dirpath);
+
+    if (header.size == 0) {
+      // create empty file
+      std::ofstream file(outpath / filePath, std::ios::binary);
+      file.close();
+      return;
+    }
+    // copy file to outpath
+    char buf[4096];
+    std::ofstream file(outpath / filePath, std::ios::binary);
+    stream.seekg(edat_header.offset_files + header.offset, std::ios::beg);
+    size_t remaining = header.size;
+    while(remaining > 0) {
+      size_t toRead = std::min(remaining, (size_t)sizeof(buf));
+      stream.read(buf, toRead);
+      file.write(buf, toRead);
+      remaining -= toRead;
+    }
+    etcetera::custom_assert(remaining == 0);
   }
 
   std::any parse(std::istream &stream) override {
