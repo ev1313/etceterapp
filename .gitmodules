@@ -4,3 +4,6 @@
 [submodule "deps/Hash"]
 	path = deps/Hash
 	url = https://github.com/Chocobo1/Hash
+[submodule "deps/cpptrace"]
+	path = deps/cpptrace
+	url = https://github.com/jeremy-rifkin/cpptrace.git

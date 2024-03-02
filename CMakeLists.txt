@@ -60,16 +60,3 @@ add_executable(tests
   )
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain etceterapp)
 
-add_executable(ndfbin examples/ndfbin.cpp)
-target_link_libraries(ndfbin PRIVATE etceterapp)
-
-add_executable(edat
-        examples/edat.cpp
-)
-target_link_libraries(edat PRIVATE etceterapp)
-
-add_executable(edat_helper
-        examples/edat_helper.cpp
-        examples/edat_helper.cpp
-)
-target_link_libraries(edat_helper PRIVATE etceterapp)
